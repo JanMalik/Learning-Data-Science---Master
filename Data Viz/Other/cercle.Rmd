@@ -1,0 +1,118 @@
+---
+title: "Cercles & Ellipses - Graphiques sur R"
+date: "6 Septembre 2018"
+author: "Jan Malik"
+output: html_notebook
+---
+
+# Cercle unitaire
+
+### Method 1
+```{r}
+ycir <- function(x){
+
+    y <- sqrt(1 - x^2)
+
+    y
+}
+
+sqx <- seq(-1, 1, length.out = 100)
+
+plot(sqx, ycir(sqx),
+     xlim = c(-1, 1),
+     ylim = c(-1, 1),
+     xlab="x",
+     ylab="y")
+par(new = TRUE)
+plot(sqx, -ycir(sqx),
+     xlim = c(-1, 1),
+     ylim = c(-1, 1), 
+     xlab="",
+     ylab="")
+```
+
+
+### Method 2
+
+```{r}
+x <- seq(-1,1,0.02)
+y <- c()
+for (i in 1:101) {
+  y = c(y,sqrt(1-(x[i])^2))
+}
+p<-rbind(x,y)
+
+plot(x,y, xlim=c(-1,1), ylim=c(-1,1),
+     xlab="x",
+     ylab="y")
+par(new=T)
+plot(x,-y, xlim=c(-1,1), ylim=c(-1,1),
+     xlab="",
+     ylab="")
+```
+
+
+# Les Ellipses
+
+```{r}
+A <- matrix(c(1,3,3,1), nrow=2, ncol=2)
+```
+
+```{r}
+f <- function(A){
+  Im = A%*%p
+  return(Im)
+}
+Im=f(A)
+
+plot(f(A)[1,], f(A)[2,],xlim=c(-3,3), ylim=c(-3,3), col="red", xlab="x", ylab="y")
+par(new=TRUE)
+plot(-f(A)[1,], -f(A[2,]),xlim=c(-3,3), ylim=c(-3,3), col="blue", xlab="", ylab="")
+par(new=T)
+plot(x,y, xlim=c(-1,1), ylim=c(-1,1), type="l", xlab="", ylab="")
+par(new=TRUE)
+plot(x,-y, xlim=c(-1,1), ylim=c(-1,1), type="l", xlab="", ylab="")
+
+```
+```{r}
+#Autre matrice
+
+B <- rbind(c(2,6), c(6,2))
+Im.B <- f(B)
+
+plot(f(A)[1,], f(A)[2,],xlim=c(-6,6), ylim=c(-6,6), col="red",type="l", xlab="x", ylab="y")
+par(new=TRUE)
+plot(-f(A)[1,], -f(A[2,]),xlim=c(-6,6), ylim=c(-6,6), col="red",type="l", xlab="", ylab="")
+par(new=T)
+plot(x,y, xlim=c(-6,6), ylim=c(-6,6), type="l", xlab="", ylab="")
+par(new=TRUE)
+plot(x,-y, xlim=c(-6,6), ylim=c(-6,6), type="l", xlab="", ylab="")
+par(new=T)
+plot(f(B)[1,], f(B)[2,],xlim=c(-6,6), ylim=c(-6,6), col="blue", xlab="", ylab="")
+par(new=TRUE)
+plot(-f(B)[1,], -f(B[2,]),xlim=c(-6,6), ylim=c(-6,6), col="blue", xlab="", ylab="")
+
+```
+```{r}
+C <- rbind(c(1,2),c(2,1))
+
+plot(f(A)[1,], f(A)[2,],xlim=c(-6,6), ylim=c(-6,6), col="red",type="l", xlab="x", ylab="y")
+par(new=TRUE)
+plot(-f(A)[1,], -f(A[2,]),xlim=c(-6,6), ylim=c(-6,6), col="red",type="l", xlab="", ylab="")
+par(new=T)
+plot(x,y, xlim=c(-6,6), ylim=c(-6,6), type="l", xlab="", ylab="")
+par(new=TRUE)
+plot(x,-y, xlim=c(-6,6), ylim=c(-6,6), type="l", xlab="", ylab="")
+par(new=T)
+plot(f(C)[1,], f(C)[2,],xlim=c(-6,6), ylim=c(-6,6), col="green", xlab="", ylab="")
+par(new=TRUE)
+plot(-f(C)[1,], -f(C[2,]),xlim=c(-6,6), ylim=c(-6,6), col="green", xlab="", ylab="")
+par(new=T)
+plot(f(B)[1,], f(B)[2,],xlim=c(-6,6), ylim=c(-6,6), col="blue", type="l", xlab="", ylab="")
+par(new=TRUE)
+plot(-f(B)[1,], -f(B[2,]),xlim=c(-6,6), ylim=c(-6,6), col="blue", type="l", xlab="", ylab="")
+```
+Conclusion :
+
+Les vecteurs propres qui ne change pas de direction après les transformation sont les facteurs de l'orientation des Ellipses.
+Les valeurs propres identifient "le coefficient" d'élargissement des élipses.
