@@ -1,0 +1,63 @@
+#########################
+###     Jan Malik     ###
+### 26 September 2018 ###
+#########################
+
+#premier terminal (CREATION SERVEUR)
+
+mongod --port 1234 --dbpath /export/db/malik
+
+
+
+
+
+#second terminal (REQUETES)
+
+mongo localhost:1234/myDB
+
+##1) Display results in an easy to read format
+###+ commandes >.....
+use test (ou autre)
+db.getCollectionInfos()
+db.blog.authors.find().pretty()
+db.blog.posts.find().pretty()
+
+##2) find options and count
+use food
+db.NYfood.find({"cuisine":"Bakery"})
+db.NYfood.find({"cuisine":"Bakery"}).count()
+db.NYfood.find({"cuisine":"Chinese"},{"Brooklyn":true}).count()
+db.NYfood.find({"cuisine":"Bakery","borough":"Bronx"},{"name":true,"_id":false})
+use etudiants
+db.notes.find({"nom":"Marc"},{"nom":true,"notes":true,"_id":false})
+
+##3) find with more options
+db.notes.find({"notes":{$gt:10}},{"nom":true,"_id":false})
+###La requête suivante : db.notes.find({"notes": {$gt: 12, $lte: 10}}) affiche la liste d'individu (avec toutes leurs infos) ayant (au moins) une note sup à 12 ET une une inf à 10 
+db.NYfood.find({"cuisine":"Chinese","borough":{$in:["Bronx","Brooklyn"]}},{"name":true,"_id":false})
+db.NYfood.find({"cuisine":"Bakery","borough":"Bronx","name":{$gte:"P",$lt:"Q"}},{"name":true,"_id":false})
+ajd=new Date("2018-01-25")
+d13=new Date("1995-01-01")
+d13_1=new Date("1995-01-02")
+db.notes.find({"ddn":{$gt:d13}},{"nom":true,"_id":false,"ddn":true})
+db.notes.find({"ddn":{$gt:d13},"sexe":"F"},{"nom":true,"_id":false})
+d15=new Date("2015-08-26")
+d15_1=new Date("2015-08-27")
+db.blog.posts.find({"date":{$gte:d15,$lt:d15_1}},{"_id":false,"title":true})
+db.notes.find({$or:[{"sexe":"F"},{"nom":{$gte:"M",$lt:"N"}}]})
+db.blog.posts.find({"comments":{$size:0}})
+db.notes.find({"notes":{$size:2}})
+db.notes.find({$or:[{"notes":{$size:2}},{"notes":{$size:1}}]})
+db.notes.find({"notes":{$size:{$gte:2}}})
+
+
+
+
+
+#troisieme terminal (IMPORTS)
+
+mongorestore --host localhost:1234 -d test "/home/user/malik_j/[path to file]/test/"
+mongorestore --host localhost:1234 -d test_singlecollec "/home/user/malik_j/[path to file]/test_singlecollec/"
+mongorestore --host localhost:1234 -d etudiants "/home/user/malik_j/[path to file]/etudiants/"
+mongoimport --db food --file "/home/user/malik_j/[path to json file]/db.json" --jsonArray --host localhost:1234
+

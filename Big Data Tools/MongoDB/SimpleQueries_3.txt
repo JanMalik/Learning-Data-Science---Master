@@ -1,0 +1,114 @@
+#########################
+###     Jan Malik     ###
+### 26 September 2018 ###
+#########################
+
+# premier terminale (SERVEUR)
+
+mkdir /export/db/malik_j #créer un repertoire 
+
+mongod --port 1234 --dbpath /export/db/malik_j #on accède au répertoire
+
+
+
+
+
+# deuxieme terminal (REQUETES : client)
+
+mongo localhost:1234
+
+
+
+
+
+# troisieme terminal (IMPORTS)
+
+mongorestore --host localhost:1234 -d test "/home/user/malik_j/[path to file]/test/"
+mongorestore --host localhost:1234 -d test_singlecollec "/home/user/malik_j/[path to file]/test_singlecollec/"
+mongorestore --host localhost:1234 -d etudiants "/home/user/malik_j/[path to file]/etudiants/"
+mongoimport --db food --file "/home/user/malik_j/[path to json file]/db.json" --jsonArray --host localhost:1234
+
+
+
+
+
+# 0)
+##Dans le terminale : "REQUETES : client"
+
+> use large_db
+> n = 500000
+> for (i=0; i<n; i++) {
+    db.users.insert({"i": i, "name": "user"+i,
+                     "age": Math.floor(Math.random()*120),
+                     "created" : new Date()})
+    }
+
+
+# 1)
+##Dans le terminle : "REQUETES : client 2"
+
+> use large_db
+> db.users.count()
+
+
+# 2)
+> db.users.find({"name" : "users101"}).explain("executionStats")
+## i) 
+"executionTimeMillis" : 128
+"executionTimeMillisEstimated" : 113
+## ii)
+"totalDocsExaminated" : 500000
+## iii)
+"docsExaminated" : 500000
+
+
+# 3)
+> db.users.find().limit(1).explain("executionStats")
+##bcp plus apide car au bout du premier il s'arrete
+
+
+# 4)
+> db.users.find({"name" : "users499999"}).explain("executionStats")
+##RIEN de différent
+
+
+# 5)
+> db.users.createIndex({"name":1})
+
+
+# 6)
+> db.users.find({$text: {$search:"user101"}}).explain("executionStats")
+> db.users.find({$text: {$search:"user499999"}}).explain("executionStats")
+##Il met bcp moins de temps car il xplore dorenavant plus que une seul document
+##Plutot recpier les memes requeetes que 2 et 4
+##met quasi rien en temps
+
+# 7)
+> db.users.find({"age" : 20}).explain("executionStats") 
+## 4175 en 134
+> db.users.find({"age" : 20}).sort({"name":1}).explain("executionStats")
+## 4175 en 159
+> db.users.find({"age" : 20}).sort({"createde":1}).explain("executionStats")
+## 4175 en 142
+> db.users.find({"age" : 20, "name" : {$gte : "user100000"}}).explain("executionStats") 
+## 4175 en 392
+
+
+# 8) 
+> db.users.createIndex({"age":1, "name":1})
+
+
+# 9)
+## Time respectives : 10, 10, 36 et 9 donc toutes les requetes ont ete accelerees
+
+# 10)
+> use food
+> db.getCollectionInfos()
+
+> db.NYfood.createIndex({"adress.loc": "2dsphere"})
+> db.NYfood.createIndex({"$**": "text"})
+> db.NYfood.createIndex({"borough": 1})
+> db.NYfood.createIndex({"cuisine": 1})
+
+> CrownHeights={"type": "Point", "coordinates": [-73.923, 40.676]}
+> db.NYfood.find({"adress.loc" : {$near : {$geometry : CrownHeights}}})

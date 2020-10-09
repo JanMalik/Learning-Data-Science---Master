@@ -1,0 +1,23 @@
+#########################
+###     Jan Malik     ###
+### 26 September 2018 ###
+#########################
+
+#1ère fenêtre
+
+mkdir /export/db/malik_j #créer un repertoire 
+
+mongod --port 1234 --dbpath /export/db/malik_j #on accède au répertoire
+
+#2ème fenêtre
+
+mongo localhost:1234
+
+#3ème fenêtre
+#Chargement du dossier "étudiants" si c'est pour tout un fichier
+
+mongorestore --host localhost:1234 -d etudiants "/home/user/malik_j/[path to file]/etudiants/"
+
+#Chargement d'un fichier .json
+
+mongoimport --db food --file "/home/user/malik_j/[path to json file]/db.json" --jsonArray --host localhost:1234

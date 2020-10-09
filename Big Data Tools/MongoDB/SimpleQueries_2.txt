@@ -1,0 +1,47 @@
+#########################
+###     Jan Malik     ###
+### 26 September 2018 ###
+#########################
+
+# La base test_singlecollec
+
+##Affiche les documents de l’unique collection de la base test_singlecollec correspondant à des posts (et non à des auteurs).
+
+db.blog.find({"type": "post"})
+db.blog.find({"title": {$exists:true}})
+
+db.blog.find({"type": "author"})
+db.blog.find({"title": {$exists:false}})
+
+db.blog.posts.find({},{"title":true})
+
+id_tav = db.blog.authors.findOne({"firstname":"Romain"},{"_id":true})
+db.blog.posts.find({"author_id":id_tav["_id"]})
+
+db.notes.find({ $and : [{$or : [ {"notes": {$size: 0}}, {"notes" : {$exists : false}} ]},{"sexe":"F"}]})
+
+datedebut = new Date("1995-01-01")
+datefin = new Date("1996-01-01") #date pour traiter la question
+db.notes.find({$and:[{"ddn":{$lt:datefin}},{"ddn":{$gt:datedebut}}]})
+db.notes.find({"ddn":{$gte : datedebut , $lt : datefin}}) #Deuxième façon
+
+db.notes.find({"notes" : {$gte:13}})
+
+db.notes.find({"notes":{ $elemMatch:{ $gte: 10, $lte: 15 }}})
+
+db.notes.find({"notes" : { $not: { $lt : 10} }})
+
+db.notes.find({ $and : [ {"notes": {$not:{$size: 0}}}, {"notes" : {$exists : true}} ,{"notes" : { $not: { $lt : 10} }}]})
+
+db.NYfood.find({"address.zipcode":"10462"}).count() "demander au prof"
+
+db.NYfood.find({"borough" : "Manhattan"},{"grades.grade" : true})
+
+db.NYfood.find({"grades.grade" : "C"}).pretty() #facultative de le mettre mais permet une plus jolie visu sur l'affichage
+
+db.NYfood.find({"grades.grade" : {$ne "C"}}, {"grades.grade" : true}).pretty()
+
+
+db.NYfood.find({"grades.grade" : {$not : {$gte : "B"}}})
+#ou sinon avec nor pour lister les conditions non désirables
+db.NYfood.find({$nor:[{"grades.grade" : {$gt : "A"}]}, {"grades.grade" : true}).pretty()
