@@ -1,0 +1,53 @@
+---
+title: "Cartographie Guyane"
+author: "Jan Malik"
+date: "7 November 2018"
+output: html_notebook
+---
+
+
+# I) Import
+
+```{r}
+library(maptools)
+library(sp)
+#install.packages("rgdal")
+library(rgdal)
+```
+
+```{r}
+src_contour <- readShapeLines("D:/Users/JanMalik/Studia/Agro/Visu/CartoGuyane/data/contour_guyane.shp")
+proj4string(src_contour) <- CRS("+init=epsg:2972")
+src_wgs84 <- spTransform(src_contour, CRS("+proj=longlat +datum=WGS84"))
+```
+
+```{r}
+src_orp <- readShapePoints("D:/Users/JanMalik/Studia/Agro/Visu/CartoGuyane/data/orpaillage_hors_contraintes.shp")
+orp <- data.frame(longi=src_orp$LON, lati=src_orp$LAT, texte=src_orp$STATUT)
+orp <- orp[-which(is.na(orp$texte)),]
+```
+
+# II) Cartographies
+
+```{r}
+#1.
+library(leaflet)
+map <- leaflet(orp)
+map <- setView(map, lng=-54, lat=4, zoom=7)
+
+#2.
+map <- addMarkers(map, lng=~longi, lat=~lati, popup=~texte)
+map <- addPolygons(map, data=src_wgs84)
+
+#3.
+map <- addProviderTiles(map, providers$OpenStreetMap)
+
+#4.
+map <- addMarkers(map, lng=~longi, lat=~lati, label=~texte)
+map <- addPolylines(map, data=src_wgs84)
+
+#RPZ
+map
+```
+
+
