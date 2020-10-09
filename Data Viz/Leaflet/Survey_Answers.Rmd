@@ -1,0 +1,358 @@
+---
+title: "Projet végétAalisation: Survey"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    number_sections: yes
+    theme: united
+    highlight: tango
+---
+
+```{r echo=FALSE}
+library(openxlsx)
+library(ggplot2)
+library(ggthemes)
+library(wesanderson)
+library(leaflet)
+library(leaflet.minicharts)
+library(cowplot)
+library(RColorBrewer)
+dta <- read.xlsx("Survey_Answers.xlsx")
+my_pal <- c("#FBCCB4", #orange
+            "#FBFBB6", #yellow
+            "#C8CC9C", #light green
+            "#959C95" #gray / dark green
+            )
+my_backgound <- "#FFFFFF"
+my_colors <- wes_palette("GrandBudapest1")
+
+dta$lat <- as.numeric(dta$lat)
+dta$long <- as.numeric(dta$long)
+dta$Rue <- as.factor(dta$Rue)
+dta$Plante_Grimpantes <- as.factor(dta$Plante_Grimpantes)
+dta$Jardiniere_bool <- as.factor(dta$Jardiniere_bool)
+dta$plantation_permanante_bool <- as.factor(dta$plantation_permanante_bool)
+dta$gd_bac_plante_bool <- as.factor(dta$gd_bac_plante_bool)
+dta$fete_bool <- as.factor(dta$fete_bool)
+dta$fete_orga_bool <- as.factor(dta$fete_orga_bool)
+dta$integration_collectif <- as.factor(dta$integration_collectif)
+
+
+colnames(dta)
+#dta <- dta[-18,]
+```
+
+
+# Nos voisins
+
+## Nombre total de réponse / foyers : 29 *(dont 2 en anglais)*
+
+## Nombre total d'immeubles : 26
+
+## Nombre de voisin inclus : 59
+
+## Lieux des foyer
+
+```{r echo=FALSE}
+lieu <- data.frame(Rue = c("Rue Van Aa",
+                           "Rue Cans",
+                           #"Rue du Conseil",
+                           "Rue du Viaduc"),
+                   
+                   Immeubles = c(sum(dta$Rue == "Van Aa"),
+                                 sum(dta$Rue == "Cans"),
+                                 #sum(dta$Rue == "Conseil"),
+                                 sum(dta$Rue == "Viaduc")),
+                   
+                   Habitants = c(sum(dta$Nmb_people[dta$Rue == "Van Aa"]),
+                                 sum(dta$Nmb_people[dta$Rue == "Cans"]),
+                                 #sum(dta$Nmb_people[dta$Rue == "Conseil"]),
+                                 sum(dta$Nmb_people[dta$Rue == "Viaduc"])),
+                   
+                   Jardinieres = c(sum(dta$Jardiniere_nmb[dta$Rue == "Van Aa"]),
+                                   sum(dta$Jardiniere_nmb[dta$Rue == "Cans"]),
+                                   #sum(dta$Jardiniere_nmb[dta$Rue == "Conseil"]),
+                                   sum(dta$Jardiniere_nmb[dta$Rue == "Viaduc"])))
+
+Im <- ggplot(data = lieu, aes(x = Rue, y = Immeubles, fill = Rue)) +
+  geom_bar(stat="identity") +
+  theme_solarized() +
+  #scale_color_brewer(palette = my_colors) +
+  #scale_fill_brewer(palette = my_colors) +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  theme(
+    plot.background = element_rect(fill = my_backgound), 
+    panel.background = element_rect(fill = my_backgound, colour=my_backgound),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank()
+    ) +
+  ylim(0,15) +
+  guides(fill = "none") +
+  geom_text(aes(label=Immeubles),
+            vjust=-0.5,
+            color="black",
+            position = position_dodge(0.9),
+            size=5)
+Im
+```
+
+## Habitant par foyer
+
+```{r echo=FALSE}
+Hb <- ggplot(data = lieu, aes(x = Rue, y = Habitants, fill = Rue)) +
+  geom_bar(stat="identity") +
+  theme_solarized() +
+  #scale_color_brewer(palette = my_colors) +
+  #scale_fill_brewer(palette = my_colors) +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  theme(
+    plot.background = element_rect(fill = my_backgound), 
+    panel.background = element_rect(fill = my_backgound, colour=my_backgound),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank()
+    ) +
+  ylim(0,40) +
+  guides(fill = "none") +
+  geom_text(aes(label=Habitants),
+            vjust=-0.5,
+            color="black",
+            position = position_dodge(0.9),
+            size=5)
+Hb
+```
+
+
+```{r fig.height=6, fig.width=14}
+plot_grid(Im, Hb, ncol = 2, nrow = 1)
+```
+
+# Vegetaalisation
+
+Pie charts from google form or Excel ?
+
+# Leaflet
+
+```{r}
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 1){
+  colorAdditions <- paste0(colors,
+                           "; width:",
+                           sizes,
+                           "px; height:",
+                           sizes,
+                           "px")
+  labelAdditions <- paste0("<div style='display: inline-block;height: ",
+                           sizes,
+                           "px;margin-top: 4px;line-height: ",
+                           sizes, "px;'>",
+                           labels, "</div>")
+
+      return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity))
+    }
+```
+
+```{r}
+# In order not to have a gray corcli that is not very visible on the map
+dta_map <- dta
+dta_map$Jardiniere_nmb_bis <- ifelse(dta_map$Jardiniere_nmb != 0, dta_map$Jardiniere_nmb + 0, 0)
+
+levels(dta_map$Plante_Grimpantes)[2] <- levels(dta_map$Plante_Grimpantes)[3]
+
+greenLeafIcon <- makeIcon(
+  iconUrl = "http://leafletjs.com/examples/custom-icons/leaf-green.png",
+  iconWidth = 19, iconHeight = 47.5,
+  iconAnchorX = 11, iconAnchorY = 47,
+  shadowUrl = "http://leafletjs.com/examples/custom-icons/leaf-shadow.png",
+  shadowWidth = 25, shadowHeight = 32,
+  shadowAnchorX = 2, shadowAnchorY = 31
+)
+
+leafIcons <- icons(
+  iconUrl = ifelse(dta_map$Plante_Grimpantes == "Oui, comptabilisez en une pour moi!",
+    "http://leafletjs.com/examples/custom-icons/leaf-green.png",
+    ifelse(dta_map$Plante_Grimpantes == "Non merci",
+           "http://leafletjs.com/examples/custom-icons/leaf-shadow.png",
+           #"http://leafletjs.com/examples/custom-icons/leaf-red.png",
+           "http://leafletjs.com/examples/custom-icons/leaf-orange.png")
+  ),
+  iconWidth = 19, iconHeight = 47.5,
+  iconAnchorX = 11, iconAnchorY = 47#,
+  #shadowUrl = "http://leafletjs.com/examples/custom-icons/leaf-shadow.png",
+  #shadowWidth = 25, shadowHeight = 32,
+  #shadowAnchorX = 2, shadowAnchorY = 31
+)
+
+
+#html_legend <- "<img src='http://leafletjs.com/examples/custom-icons/leaf-green.png'>Plante grimpante ici!<br/>
+#<img src='http://leafletjs.com/examples/custom-icons/leaf-orange.png'>Attente de l'accrod propriétaire"
+
+
+html_legend <- "<img src='http://leafletjs.com/examples/custom-icons/leaf-green.png'
+style='width:12px;height:30px;'>Oui, plante grimpante ici!<br/> 
+<img src='http://leafletjs.com/examples/custom-icons/leaf-orange.png'
+style='width:12px;height:30px;'>En attente de l'accord du propriétaire"
+
+html_legend_en <- "<img src='http://leafletjs.com/examples/custom-icons/leaf-green.png'
+style='width:12px;height:30px;'>Yes, climbing plant here!<br/> 
+<img src='http://leafletjs.com/examples/custom-icons/leaf-orange.png'
+style='width:12px;height:30px;'>Awaiting landlord’s approval"
+```
+
+
+```{r}
+### fond gris (addTiles)
+#tilesURL <- "http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+
+### palette
+#dta$Plante_Grimpantes <- as.factor(dta$Plante_Grimpantes)
+pal <- colorNumeric(palette = c(#"#66000000", #Black alpha 40%#"
+                                #B2182B", #Red
+                                "#C7E9C0", #Greens
+                                "#74C476",
+                                "#238B45",
+                                "#00441B"), 
+                   domain = dta_map$Jardiniere_nmb_bis)
+
+#Carte
+mymap <- leaflet(data = dta_map) %>% 
+  #addTiles(tilesURL) %>%
+  addTiles() %>%
+  addCircles(lng = ~long, lat = ~lat,
+             radius = ~`Jardiniere_nmb_bis`,
+             popup = ~paste(sep = "<br/>",
+                            paste(sep =" ", "<b>Adress :</b>", `Adress`),
+                            paste(sep =" ", "<b>Nombre de personnes :</b>", `Nmb_people`),
+                            paste(sep =" ", "<b>Plantes Grimpantes :</b>", `Plante_Grimpantes`),
+                            paste(sep =" ", "<b>Jardinieres :</b>", `Jardiniere_bool`),
+                            paste(sep =" ", "<b>Nombre de jardinieres :</b>", `Jardiniere_nmb`)
+                            ),
+             color = ~pal(`Jardiniere_nmb_bis`), #Couleur du cercle selon la palette definie dans global
+             fillOpacity = 1,
+             stroke = TRUE) %>% 
+  addMarkers(~long, ~lat, icon = leafIcons) %>%
+  #addMarkers(dta_map$long[dta_map$Plante_Grimpantes != "Non merci"], dta_map$lat[dta_map$Plante_Grimpantes != "Non merci"], icon = leafIcons) %>%
+  addLegendCustom(colors = c("#74C476",
+                             "#238B45",
+                             "#00441B"),
+                  labels = c("2 jardinières",
+                             "3 jardinières",
+                             "4 jardinières"),
+                  sizes = c(6, 8, 10)) %>%
+  addControl(html = html_legend, position = "topright")
+mymap #%>%
+  #leaflet(data = dta_map[dta_map$Plante_Grimpantes != "Non merci", ]) %>% addTiles() %>%
+  #addMarkers(~long, ~lat, icon = leafIcons)
+```
+
+
+```{r echo=FALSE}
+library(htmlwidgets)
+#saveWidget(widget = mymap, file = "vegetaalisation_jardinieres.html")
+```
+
+
+```{r}
+### fond gris (addTiles)
+#tilesURL <- "http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+
+### palette
+#dta$Plante_Grimpantes <- as.factor(dta$Plante_Grimpantes)
+
+dta_map$pg <- dta_map$Plante_Grimpantes
+levels(dta_map$pg)
+pal <- colorNumeric(palette = c(#"#66000000", #Black alpha 40%#"
+                                #B2182B", #Red
+                                "#C7E9C0", #Greens
+                                "#74C476",
+                                "#238B45",
+                                "#00441B"), 
+                   domain = dta_map$Jardiniere_nmb_bis)
+
+#Carte
+mymap2 <- leaflet(data = dta_map) %>% 
+  #addTiles(tilesURL) %>%
+  addTiles() %>%
+  addCircles(lng = ~long, lat = ~lat,
+             radius = ~`Jardiniere_nmb_bis`,
+             popup = ~paste(sep = "<br/>",
+                            paste(sep =" ", "<b>Adress :</b>", `Adress`),
+                            paste(sep =" ", "<b>Nombre de personnes :</b>", `Nmb_people`),
+                            paste(sep =" ", "<b>Plantes Grimpantes :</b>", `Plante_Grimpantes`),
+                            paste(sep =" ", "<b>Jardinieres :</b>", `Jardiniere_bool`),
+                            paste(sep =" ", "<b>Nombre de jardinieres :</b>", `Jardiniere_nmb`)
+                            ),
+             color = ~pal(`Jardiniere_nmb_bis`), #Couleur du cercle selon la palette definie dans global
+             fillOpacity = 1,
+             stroke = TRUE) %>% 
+  addMarkers(~long, ~lat, icon = leafIcons) %>%
+  #addMarkers(dta_map$long[dta_map$Plante_Grimpantes != "Non merci"], dta_map$lat[dta_map$Plante_Grimpantes != "Non merci"], icon = leafIcons) %>%
+  addLegendCustom(colors = c("#74C476",
+                             "#238B45",
+                             "#00441B"),
+                  labels = c("2 flower boxes",
+                             "3 flower boxes",
+                             "4 flower boxes"),
+                  sizes = c(6, 8, 10)) %>%
+  addControl(html = html_legend_en, position = "topright")
+mymap2 #%>%
+  #leaflet(data = dta_map[dta_map$Plante_Grimpantes != "Non merci", ]) %>% addTiles() %>%
+  #addMarkers(~long, ~lat, icon = leafIcons)
+```
+
+```{r echo=FALSE}
+#library(htmlwidgets)
+saveWidget(widget = mymap2, file = "vegetaalisation.html")
+save.image("D:/Users/Jan Malik/Praca/Indie Projects/VegetAalisation/Survey_data.RData")
+```
+
+
+```{r echo=FALSE}
+load("Survey_data.RData")
+colnames(lieu) <- c("Rue", "Nombre d'immeubles concernés", "Nombre d'habitants", "Nombre de jardinières souhaitées")
+lieu
+```
+
+```{r}
+#levels(dta$Plante_Grimpantes)
+#levels(dta$Jardiniere_bool)
+#levels(dta$plantation_permanante_bool)
+#levels(dta$gd_bac_plante_bool)
+
+dta_bis <- dta[dta$Rue != "Conseil",]
+
+dta_pg <- data.frame(PG = levels(dta_bis$Plante_Grimpantes)[c(1,3,4)],
+                     Rep= c(sum(dta_bis$Plante_Grimpantes == levels(dta_bis$Plante_Grimpantes)[1])+1,
+                            sum(dta_bis$Plante_Grimpantes == levels(dta_bis$Plante_Grimpantes)[3])+3,
+                            sum(dta_bis$Plante_Grimpantes == levels(dta_bis$Plante_Grimpantes)[4])+2))
+colnames(dta_pg) <- c("Plante Grimpante", "Réponses")
+dta_pg
+
+dta_jd <- data.frame(PG = c("Non merci", "Oui"),
+                     Rep= c(sum(dta_bis$Jardiniere_bool == levels(dta_bis$Jardiniere_bool)[1])+1,
+                            sum(dta_bis$Jardiniere_bool == levels(dta_bis$Jardiniere_bool)[2])+3))
+colnames(dta_jd) <- c("Jardinières", "Réponses")
+dta_jd
+
+dta_pp <- data.frame(PG = c("Non merci", levels(dta_bis$plantation_permanante_bool)[c(1,3,2)]),
+                     Rep= c(0,
+                            sum(dta_bis$plantation_permanante_bool == levels(dta_bis$plantation_permanante_bool)[1])+1,
+                            sum(dta_bis$plantation_permanante_bool == levels(dta_bis$plantation_permanante_bool)[3])+2,
+                            sum(dta_bis$plantation_permanante_bool == levels(dta_bis$plantation_permanante_bool)[2])+1))
+colnames(dta_pp) <- c("Plantation permanante", "Réponses")
+dta_pp
+
+dta_gb <- data.frame(PG = c("Non merci", "Indifférent", "Oui"),
+                     Rep= c(sum(dta_bis$gd_bac_plante_bool == levels(dta_bis$gd_bac_plante_bool)[2])+1,
+                            sum(dta_bis$gd_bac_plante_bool == levels(dta_bis$gd_bac_plante_bool)[1]),
+                            sum(dta_bis$gd_bac_plante_bool == levels(dta_bis$gd_bac_plante_bool)[3])+3))
+colnames(dta_gb) <- c("PGrands bac à fleurs", "Réponses")
+dta_gb
+```
+
+```{r}
+save.image("D:/Users/Jan Malik/Praca/Indie Projects/VegetAalisation/Survey_data.RData")
+```
+
+

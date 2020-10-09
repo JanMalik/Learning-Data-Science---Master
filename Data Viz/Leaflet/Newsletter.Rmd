@@ -1,0 +1,75 @@
+---
+title: "Projet VégétAalisation"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    number_sections: yes
+    theme: united
+    highlight: tango
+---
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(openxlsx)
+library(ggplot2)
+library(ggthemes)
+library(wesanderson)
+library(leaflet)
+library(leaflet.minicharts)
+library(cowplot)
+library(RColorBrewer)
+library(knitr)
+load("D:/Users/Jan Malik/Praca/Indie Projects/VegetAalisation/Survey_data.RData")
+```
+
+# Vous!
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.height=6, fig.width=14}
+plot_grid(Im, Hb, ncol = 2, nrow = 1)
+```
+
+
+# Vos réponses {.tabset .tabset-pills}
+
+## Plantes grimpantes
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+colnames(dta_pg) <- c("Plantes grimpantes", "")
+kable(dta_pg, caption = "A knitr kable.", row.names = FALSE)
+```
+
+## Jardinières
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+colnames(dta_jd) <- c("Jardinières", "")
+kable(dta_jd, caption = "A knitr kable.", row.names = FALSE)
+```
+
+## Plantations permanentes
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+colnames(dta_pp) <- c("Plantations permanentes", "")
+kable(dta_pp, caption = "A knitr kable.", row.names = FALSE)
+```
+
+## Bacs à fleurs
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+colnames(dta_gb) <- c("Grands bacs à fleurs", "")
+kable(dta_gb, caption = "A knitr kable.", row.names = FALSE)
+```
+
+# Cartographie {.tabset .tabset-pills}
+
+## Français
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+mymap
+```
+
+## English
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+mymap2
+```
+
