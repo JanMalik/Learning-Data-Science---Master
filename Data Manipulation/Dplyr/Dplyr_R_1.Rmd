@@ -1,0 +1,331 @@
+---
+title: "Package `dplyr` in R - Completed course"
+author: "Malik Jan"
+date: "13 December 2017"
+output:
+  pdf_document: default
+  html_document: default
+  html_notebook: default
+  github_document: default
+  word_document: default
+subtitle: Partie 1
+---
+
+# Introduction
+
+Le package `dplyr` est un package qui permet la manipulation des données de façon simple et rapide. Il définit une **grammaire** pour interagir avec les données. Il est basé sur une *variante* des `data.frame` appelée `tibble`. Nous avons déjà rencontré des `tibble`lors de l'utilisation du package `readr`. En effet la commande `read_delim()`et ses dérivées créent des objets dont la classe est `tbl`. Regardons un exemple simple :
+
+```{r, message=FALSE, warning=FALSE}
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("readr")
+library(readr)
+```
+
+```{r}
+path <- file.path(dirname(getwd()),"dplyr/data", "piscines.csv")
+piscines <- read_csv(path)
+```
+
+```{r}
+class(piscines)
+```
+
+Nous reviendrons plus tard précisément sur la signification précise des classes `tbl` et `tbl_df`. On remarque tout de même que la variable `piscines`est un `data.frame`. Toutes les manipulations classiques sur les `data.frame`sont donc possibles. Comme d'habitude, on suppose que le `tibble` sur lequel on travaille est formaté de sorte que les colonnes représentent des variables et que les lignes représentent des individus^[On pourra utiliser les packages `tidyr` et `reshape2` si les données recueillis ne sont pas dans ce format. On en parlera éventuellement un peu plus loin.].
+
+# Visualiser les `tibble`
+
+Les commandes usuelles pour visualiser les `data.frame`fonctionnent. Elles donnent toutefois des résultats légèrement différents sur les `tibble` comme on peut le vérifier simplement dans la console de `R` (dans le notebook les résultats sont ne sont pas les mêmes que dans la console). Voici les commandes de base :
+```{r}
+head(piscines, n=5)
+```
+
+```{r}
+glimpse(piscines)
+```
+Notons que pour les `tibble`, on préfère utiliser la commande `glimpse()`à la commande `str()` qui permet de décrire la structure des `data.frame`. Mais on peut tout de même utiliser cette fonction :
+```{r}
+str(piscines)
+```
+
+On peut également utiliser la fonction `summary()`.
+```{r}
+summary(piscines)
+```
+
+
+# Les verbes de la grammaire `dplyr`
+
+La grammaire de *base* `dplyr` est basée sur cinq **verbes**^[Ce sont des fonctions qui ont une syntaxe particulière] qui permettent la manipulation des données. En voici une description rapide :
+
+1. `select()` permet d'extraire des variables (colonnes) d'un `tibble`.
+1. `mutate()` permet d'ajouter une variable à un `tibble`.
+1. `filter()` permet de sélectionner des individus (lignes) qui vérifient certains critères.
+1. `arrange()` permet permuter les individus pour présenter un `tibble`d'une manière différente.
+1. `summarise()` permet d'extraire des informations contenues dans un `tibble`.
+
+Dans la suite de cette section nous allons voir de façon plus précise comment utiliser ces verbes.
+
+## Le verbe `select()`
+
+Il permet de sélectionner des variables. La syntaxe générale de cette commande est la suivante :
+```{r, eval=FALSE, include=TRUE}
+select(df, VAR1, VAR2, ...)
+```
+où `df` est un `tibble` (ou un `data.frame`) et `VAR1`, `VAR2`, etc. sont les variables à sélectionner. La commande retourne un nouveau `tibble` et ne modofie pas `df`.
+
+```{r}
+coordonnees <- select(piscines, Latitude, Longitude)
+head(piscines, n=2)
+head(coordonnees, n=2)
+```
+On remarque que le nom des variables est écrit directement : pas de quotes `""`, inutile d'écrire `piscines$Longitude`non plus.
+
+On peut utiliser des **helper functions* définies dans `dplyr` pour construire des sélections plus complexes basées sur le nom des variables. Par exemple `starts_with()`ou `ends_with()` permet de sélectionner des variables dont le nom début ou finit par une chaîne de caractère donnée. La sélection précédente pourrait se faire de la façon suivante :
+```{r}
+coord <- select(piscines, ends_with("tude"))
+head(coord, n=2)
+```
+Voici deux **helper functions** bien utiles :
+
+* `contains()` : contient la chaîne de cartère passée en paramètre.
+* `matches()` : correspond exactement à la chaîne de caractère passée en paramètre (éventuellement une expression régulière).
+
+## Le verbe `mutate()`
+
+Il permet de créer de nouvelles variables à l'aide des variables contenues dans le `tibble`.^[On ne crée pas de nouvelle information, simplement on rend accessible diretement de l'information *cachée* dans le `tibble`]. La syntaxe généale de cette fonction est la suivante :
+```{r, eval=FALSE, include=TRUE}
+mutate(df, NEW.VAR = expression(VAR1, VAR2, ...))
+```
+où `df` est un `tibble`, `NEW.VAR` est le nom de la nouvelle variable et `expression(VAR1, VAR2, ...)` est une expression faisant intervenir certaines variables de `df`.
+
+Donnons un exemple :
+```{r}
+mutate(piscines, phrase=paste("La piscine", Name, "est située à l'adresse", Address))
+```
+On peut ajouter plusieurs variables en même temps :
+```{r}
+mutate(piscines,
+       phrase = paste("La piscine", Name, "est située à l'adresse", Address),
+       inutile = Longitude + Latitude
+)
+```
+Les variables créent peuvent dépendre les unes des autres :
+```{r}
+mutate(piscines,
+       phrase = paste("La piscine", Name, "est située à l'adresse", Address),
+       phrase2 = paste("Attention !", phrase)
+)$phrase2[1:2]
+```
+Attention toutefois de veiller à l'ordre d'apparition des variables : le code suivant produit une erreur !
+```{r,  eval=FALSE, include=TRUE}
+mutate(piscines,
+       phrase2 = paste("Attention !", phrase),
+       phrase = paste("La piscine", Name, "est située à l'adresse", Address)
+)$phrase2
+```
+
+
+## Le verbe `filter()`
+
+Ce verbe sert à filtrer les individus en fonction de critères. La syntaxe générale est
+```{r, eval=FALSE, include=TRUE}
+filter(df, TEST)
+```
+où `df` est un `tibble` et `TEST` est un test faisant intervenir des conditions sur le nom des colonnes. Une ligne est retenue dans le `tibble`créé par la fonction si le test passe pour la ligne en question.
+
+On peut donner un premier exemple simple où l'on filtre les *individus* (il s'agit de piscines ici) ayant une longitude supérieure à 153,02.
+```{r}
+p1 <- filter(piscines, Longitude>153.02)
+p1$Longitude
+```
+
+On peut donner un exemple un peu plus complexe en utilisant des expressions régulières pour filtrer les piscines dont le nom ne contient pas "Pool" :
+```{r}
+filter(piscines, !grepl("Pool", Name))$Name
+```
+Bien entendu, on peut combiner les test avec `&` (pour et) et `|` (pour ou). Par exemple :
+```{r}
+p2 <- filter(piscines, Longitude>153.02 | Latitude < -27.488)
+p2 <- select(p2, Longitude, Latitude)
+p2
+```
+
+## Le verbe `arrange()`
+
+Ce verbe permet de réordonner un `tibble` par rapport à l'une des variables. La syntaxe générale est simple :
+```{r, eval=FALSE, include=TRUE}
+arrange(df, VAR)
+```
+pour trier suivant l'ordre croissant par rapport à la variable `VAR`. Si l'on souhaite faire le tri dans l'ordre décroissant, on utilise plutôt :
+```{r, eval=FALSE, include=TRUE}
+arrange(df, desc(VAR))
+```
+
+Sur l'exemple de nos piscines on peut effectuer un tri par rapport à la longitude avec :
+```{r}
+arrange(piscines, Longitude)
+```
+ou
+```{r}
+arrange(piscines, desc(Longitude))
+```
+selon ce qu'on souhaite obtenir.
+
+
+Il arrive parfois qu'on se retrouve avec des ex-aequo. Une situation classique est la suivante :
+```{r}
+dalton <- tibble::tribble(
+  ~nom, ~prenom, ~taille,
+  "Dalton", "Joe", 1.40,
+  "Dalton", "William", 1.67,
+  "Dalton", "Jack", 1.93,
+  "Dalton", "Averell", 2.13
+)
+```
+Dans cet exemple, les Dalton sont présentés par ordre de taille^[Il ya toutefois des interversions d'un album à l'autre entre Jack et Wiliam.]. On peut les ranger par ordre alphabétique.
+```{r}
+arrange(dalton, nom, prenom)
+```
+Ici on ordonne d'abord par le nom de famille puis par le prénom.
+
+## Le verbe `summarise()`
+
+Ce verbe est sans doute le plus complexe des cinq verbes vus ici… et le plus puissant aussi. Il permet de construire de nouveau `tibble`qui contiennent des statistiques sur le `tibble` originel.
+
+Avant de donner des exemples, définissons la notion de fonction d'agrégat (*aggregate function* en anglais). Il s'agit simplement d'une fonction qui prend en paramètre un vecteur (au sens de `R`) et qui retourne un nombre. Ces fonctions sont légions dans les fonctions de base de `R` :
+
+1. `mean()` ;
+1. `median()` ;
+1. `IQR()` ;
+1. `var()`.
+
+On peut alors simplement résumer un `tibble`à l'aide de quelques statistiques :
+```{r}
+summarise(piscines,
+          mean_long = mean(Longitude),
+          med_lat = median(Latitude),
+          min_lat = min(Latitude),
+          sum_long = sum(Longitude)
+)
+```
+On applique plusieurs fonctions d'agrégat sur diverses colonnes du `tibble`.
+
+En plus des fonctions d'agrégat usuelles, le package `dplyr` définit certaines nouvelles fonctions dont l'utilisation conjointe avec la fonction `summarise()` se révèle fort utile :
+
+1. `n()` : permet de calculer le nombre de lignes du `tibble`. On reviendra largement sur cette fonction lorsqu'on parlera de la fonction `group_by()`.
+1. `n_distinct()` : nombre d'éléments distincts dans un vecteur : version efficiente de `length(unique(x)))`.
+1. `fisrt()` et `last()` retournent respectivement le premier élément et le dernier élément d'un vecteur.
+
+Donnons un exemple :
+```{r}
+summarise(dalton,
+          n = n(),
+          n_nom = n_distinct(nom),
+          n_prenom = n_distinct(prenom),
+          size_of_joe = first(taille)
+)
+```
+
+# Chaînage des verbes
+
+On vient de voir en détail chacun des cinq verbes de base. Cependant, la puissance de `dplyr` provient de son utilisation conjointe avec les outils de chaînage. Ceci est rendu possible grâce à la consistence de la syntaxe des verbes qui suivent **tous** les principes suivants :
+
+1. Le premier argument est un `tibble` ;
+1. La valeur retournée est aussi un `tibble`.
+
+Si bien que le résultat d'un verbe peut servir comme premier argument du verbe suivant. Donnons tout de suite un exemple où l'on souhaite chaîner deux verbes. Imaginons qu'on souhaite filtrer les piscines dont le nom ne contient pas le mot *Pool* et qu'on souhaite ensuite créer un résumé contenant les longitudes minimale et maximale ainsi que les latitudes minimale et maximale.
+
+Donnons tout d'abord un premier solution simple :
+```{r}
+p1 <- filter(piscines, !grepl("Pool", Name))
+p2 <- summarise(p1,
+                min_lat = min(Latitude),
+                max_lat = min(Latitude),
+                min_lon = min(Longitude),
+                max_lon = min(Longitude)
+)
+p2
+```
+L'inconvénient de cette méthode réside dans la création de variables annexes qui occupent inutilement de la mémoire. Ici on chaîne seulement deux opérations et le `tibble`est très petit mais dans la pratique cette façon de faire peut créer de sérieux problèmes…
+
+Pour régler ce problème, il faut **composer** (au sens mathématique) les opérations. Une façon de faire est la suivante :
+```{r}
+summarise(filter(piscines, !grepl("Pool", Name)),
+          min_lat = min(Latitude),
+          max_lat = min(Latitude),
+          min_lon = min(Longitude),
+          max_lon = min(Longitude)
+)
+```
+Ici le problème réside plutôt dans le caractère complètement illisble du code engendré par la composition surtout si le nombre d'opérations à chaîner devient important (supérieur à 3 ou 4). 
+
+Il est possible de tirer parti du meilleur des deux mondes à l'aide de la syntaxe suivante :
+```{r}
+piscines %>%
+  filter(!grepl("Pool", Name)) %>%
+  summarise(min_lat = min(Latitude),
+            max_lat = min(Latitude),
+            min_lon = min(Longitude),
+            max_lon = min(Longitude))
+```
+
+L'opérateur `%>%` est défini dans le package `magrittr` et est importé directement par `dplyr`. Il se lit **puis** (ou *and then* en anglais). Son fonctionnement est simple :au lieu d'écrire `f(x)`pour appeler la fonction `f` sur la variable `x`, on écrit à la place `x %>% f`ou `x %>% f()`. L'opérateur `%>%`est appelé un **pipe**^[Dans un shell unix l'opérateur *pipe* se note `|`.]. Si la fonction `f` prend plus d'un argument (par exemple 2) alors la commande `x %>% f(y)` est équivalement à la commande `f(x,y)`.
+
+Nous venons de voir le fonctionnement de base de l'opérateur `%>%`. Dans le package `magrittr`il existe d'autres *pipes* légèrement différents et l'on peut avoir une utilisation plus avancée de ces opérateurs. Nous donnerons quelques exemples plus tard. On peut également noter qu'il existe un autre package qui fournit de tels opérateurs : `pipeR`.
+
+# Exercice d'application
+
+On va travailler avec le package `hflights` qui contient des données sur les vols au départ de Houston [(source)](http://www.transtats.bts.gov/DatabaseInfo.asp?DB_ID=120&Link=0).
+Il faut éventuellement installer ce package :
+```{r, eval=FALSE, include=TRUE}
+#install.packages("hflights")
+```
+Puis le charger :
+```{r}
+library(hflights)
+hflights <- tbl_df(hflights)
+```
+On a alors un accès à un `tibble` nommé `hflights` qui contient les données.
+
+Avant de commencer à manipuler ces données à l'aide de `dplyr` il convient de regardre les variables dont on dispose.
+```{r}
+names(hflights)
+```
+En regardant plus en détail (comment ?), on constate que la variable `Unique Carrier` fournit un code unique qui identifie le transporteur. La variable
+```{r}
+lut1 <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
+         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
+         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
+         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+```
+permet de relier ce code au nom du transporteur. De même la variable
+```{r}
+lut2 <- c("A" = "carrier", "B" = "weather", "C" = "FFA", "D" = "security", "E" = "not cancelled")
+```
+permet de décoder la variable `CancellationCode`.
+
+**Modifer le `tibble` `hflights`pour avoir les valeurs explicites dans les deux colonnes `Unique Carrier` et `CancellationCode`.**
+```{r}
+hflights<-mutate(hflights,
+       UniqueCarrier = lut1[UniqueCarrier],
+       CancellationCode=lut2[CancellationCode]
+)
+```
+
+**Sélectionner de plusieurs manières différentes les variables de `Origin` à `Cancelled`.**
+```{r}
+
+```
+
+**Sélectionner les variables `DepTime`, `ArrTime`, `ActualElapsedTime`, `AirTime`, `ArrDelay` et `DepDelay`. Utiliser les *helper functions*.**
+```{r}
+select(hflights,ends_with("Time"),ends_with("Delay"))
+```
+
+**Filtrer les vols partis avant 5h00 et arrivés après 22h00.**
+```{r}
+filter(hflights,DepTime<=500 | ArrTime>=2200)
+```
+
+

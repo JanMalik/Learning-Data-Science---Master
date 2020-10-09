@@ -1,0 +1,263 @@
+---
+title: "Packages `dplyr` in R - Completed Course"
+author: "Malik Jan"
+date: "31 January 2018"
+output: html_notebook
+---
+
+## Initialisations : librairies
+
+```{r message=FALSE, warning=FALSE}
+#install.packages("hflights")
+#install.packages("zeallot")
+library(hflights)
+library(zeallot)
+library(tidyverse)
+hflights <- as_tibble(hflights)
+hflights
+```
+
+
+## Améliorations du tibble
+
+Même chose qu'au TD précédent.
+```{r}
+HF <- hflights %>%
+  mutate(UniqueCarrier=factor(UniqueCarrier)) %>% 
+  mutate(UniqueCarrier=fct_recode(UniqueCarrier,
+           "American"          = "AA"   ,
+           "Alaska"            = "AS"   ,
+           "JetBlue"           = "B6"   ,
+           "Continental"       = "CO"   , 
+           "Delta"             = "DL"   ,
+           "SkyWest"           = "OO"   ,
+           "United"            = "UA"   ,
+           "US_Airways"        = "US"   ,
+           "Southwest"         = "WN"   ,
+           "Atlantic_Southeast"= "EV"   ,
+           "Frontier"          = "F9"   ,
+           "AirTran"           = "FL"   ,
+           "American_Eagle"    = "MQ"   ,
+           "ExpressJet"        = "XE"   ,
+           "Mesa"              = "YV"))
+```
+
+```{r}
+HF <- HF %>% 
+  mutate(CancellationCode = factor(CancellationCode)) %>% 
+  mutate(CancellationCode = fct_recode(CancellationCode,
+         "carrier"            = "A", 
+         "weather"            = "B", 
+         "national air system"= "C",
+         "security"           = "D", 
+         "not cancelled"      = ""))
+```
+
+Visualisons le résultat :
+```{r}
+glimpse(HF)
+```
+
+
+# Faire des résumés par groupe
+
+On peut construire des groupes en fonction d'une ou plusieurs variables. Les résumés créés contiennent alors plusieurs lignes : une par groupe.
+Donnons un exemple très simple et demandons-nous quelle compagnie a le moins de retard au départ.
+```{r}
+HF %>% 
+  group_by(UniqueCarrier) %>%
+  filter(is.finite(DepDelay) & DepDelay>0) %>%
+  summarise(meanDepDelay = mean(DepDelay)) %>%
+  arrange(meanDepDelay)
+```
+
+Faisons la même chose mais en prenant également en compte la destination du vol (tous les croisements possibles entre les variables `UniqueCarrier` et `Dest` doivent être prises en compte) :
+```{r}
+HF %>% 
+  group_by(UniqueCarrier, Dest) %>%
+  filter(is.finite(DepDelay) & DepDelay>0) %>%
+  summarise(meanDepDelay = mean(DepDelay)) %>%
+  arrange(meanDepDelay)
+```
+
+Bien entendu, on peut créer plusieurs variables sans problème comme dans le cas où il y a un seul groupe.
+```{r}
+HF %>% 
+  group_by(UniqueCarrier, Dest) %>%
+  filter(is.finite(DepDelay) & DepDelay>0) %>%
+  summarise(
+    n = n(),
+    meanDepDelay = mean(DepDelay),
+    maxDepDelay = max(DepDelay),
+    minDepDelay = min(DepDelay)
+  ) %>%
+  arrange(maxDepDelay)
+```
+
+
+# Jointure de tables
+
+Il arrive souvent de travailler avec plusisuers tables et de devoir faire des jointures (comme dans le cadre des bases de données relationnelles).
+Avec `dplyr`, plusieurs fonctions sont disponibles. Elles se répartissent en deux groupes :
+
+- Les **mutating joins** : à l'instar de la fonction `mutate()`, ces jointures permettent d'augmenter la table primaire à l'aide de variables de la table secondaire ;
+- Les **filtering joins** : à l'instar de la fonction `filter()`, ces jointures permettent de filtrer les individus de la table primaire à l'aide de la table secondaire.
+
+## Mutating joins
+
+Il y a quatre fonctions de ce type :
+
+- `left_join()` ;
+- `right_join()` ;
+- `inner_join()` ;
+- `full_join()`.
+
+### `left_join()`
+
+Commençons par décrire le fonctionnement de `left_join()` avant d'expliquer succinctement les différences apportées par les autres fonctions.
+
+La fonction `left_join()` s'utilise pour ajouter à une table **primaire** (premier argument de la fonction) des colonnes provenant d'une table **secondaire** ou **étrangère** (deuxième argument de la fonction). Pour réaliser cette opération il faut décrire comment faire correspondre les lignes des deux tables. À cette fin, la notion de clé primaire intervient. Une clé primaire est une combinaison de variables (colonnes) qui apparaissent dans les deux tables. Il faut de plus que les valeurs associées à cette clé primaire permettent d'indentifier uniquement une ligne dans la table primaire.
+
+Par exemple, considérons le `tibble` suivant :
+```{r}
+personnages <- tibble::tribble(
+  ~prenom, ~nom,
+  "Émile", "Zola",
+  "Émile", "Basly",
+  "Étienne", "Lantier",
+  "Toussaint", "Maheu",
+  "Zacharie", "Maheu"
+)
+```
+Les variables `prenom` et `nom` ne peuvent servir de clé primaire seules. En effet il y a deux *Émile* d'une part et deux *Maheu* d'autre part. Il faut donc utiliser le couple des deux variables comme clé primaire pour ce `tibble`.
+
+La clé primaire est le troisième argument de la fonction `left_join()`.
+
+Donnons un exemple :
+```{r}
+readxl::excel_sheets("exemple-1.xlsx")
+```
+
+```{r}
+chanteurs <- readxl::read_excel("exemple-1.xlsx", sheet="chanteurs")
+albums <- readxl::read_excel("exemple-1.xlsx", sheet="albums")
+chanteurs
+albums
+```
+On peut donc, par exemple, faire :
+```{r}
+left_join(chanteurs, albums, by=c("prenom", "nom"))
+```
+
+Vu la syntaxe utilisée pour cette fonction, on peut la chaîner à d'autres opérations à l'aide du *pipe* `%>%`. Par exemple on peut afficher simplement pour chaque chanteur le nombre d'albums sortis après 1968 :
+```{r}
+albums %>%
+  filter(annee>1968) %>%
+  group_by(prenom, nom) %>%
+  summarise(post_soixante_huit=n()) %>%
+  left_join(chanteurs, by=c("prenom", "nom")) %>%
+  select(prenom, nom, naissance, mort, post_soixante_huit)
+```
+
+### Les autres fonctions
+
+Elles fonctionnent sur le même principe mais diffèrent sur quelques points :
+
+- La fonction `right_join()` est identique à la fonction `left_join()` sauf que c'est le deuxième argument qui sert de table primaire. On ajoute donc des variables du premier argument (table secondaire ou étrangère) au second argument (table primaire).
+- La fonction `inner_join()` est identique à `left_join()` (en particulier le premier argument est la table primaire) mais seules les lignes communes aux deux `data.frame` sont sélectionnées.
+- La fonction `full_join()` fait le contraire : toutes les lignes des deux tableaux sont sélectionnées.
+
+Reprenons l'exemple ci-dessus mais remplaçons `left_join()` par `inner_join()` ou par `full_join()` pour mieux comprendre les effets.
+```{r}
+albums %>%
+  filter(annee>1968) %>%
+  group_by(prenom, nom) %>%
+  summarise(post_soixante_huit=n()) %>%
+  inner_join(chanteurs, by=c("prenom", "nom")) %>%
+  select(prenom, nom, naissance, mort, post_soixante_huit)
+```
+
+```{r}
+albums %>%
+  filter(annee>1968) %>%
+  group_by(prenom, nom) %>%
+  summarise(post_soixante_huit=n()) %>%
+  full_join(chanteurs, by=c("prenom", "nom")) %>%
+  select(prenom, nom, naissance, mort, post_soixante_huit)
+```
+
+
+## Filtering joins
+
+Il y a deux fonctions de ce type :
+
+- `semi_join()` ;
+- `anti_join()`.
+
+Ces fonctions ont des utilités très différentes. La fonction `semi_join()` permet de filtrer des lignes de la table primaire : une ligne est conservée si sa clé primaire se retrouve dans la table secondaire. Par exemple pour ne conserver que les albums des artistes qui apparaissent dans la table `chanteurs` on peut coder :
+```{r}
+semi_join(albums, chanteurs, by="nom")
+# on peut aussi écrire
+# albums %>% semi_join(artistes, by="nom")
+```
+Et tous les albums de Juliette ont disparu ! Ici seules les variables de la table `albums` sont conservées.
+
+La fonction `anti_join()` fait le contraire, elle est surtout dans une phase exploratoire des données pour vérifier par exemple qu'il n'y a pas de problème dans la façon dont les variables sont orthographiées entre deux tables (on peut penser aux problèmes des majuscules dans les tritres des chansons). Donnons juste uyn exemple illustratif en considérant l'extrait de table suivant :
+```{r}
+detail_albums <- tibble::tribble(
+  ~titre, ~commentaire,
+  "La Mauvaise Réputation", "Aucun commentaire",
+  "Le vent", "Pas plus de commentaire"
+)
+detail_albums
+```
+Avant d'effectuer une joiture entre les tables `albums` et `detail_album`, on peut remarquer un problème grâce à la commande :
+```{r}
+detail_albums %>% anti_join(albums, by="titre")
+```
+En effet, le titre n'est pas orthographié de la même manière dans les deux situations.
+
+## Les opérations ensemblistes
+
+Elles sont utilisées pour faires des oérations sur des `data.frame` qui ont exactement la même structure (même variables). Il y en a trois :
+
+- `union(df1, df2)` pour la réunion des deux `data.frame` ;
+- `intersect(df1, df2)` pour l'intersection des deux `data.frame` ;
+- `setdiff(df1, df2)` pour sélectionner l'ensembles des individus qui sont dans `df1` mais pas dans  `df2`.
+
+Prenons encore une fois un exemple simple : la table `gaston` contient des personnages qui apparaissent dans les bandes dessinées De Gaston Lagaffe. La table `spirou_fantasio` contient elle des personnages de l'autre bande dessinée à succès de Franquin.
+```{r}
+gaston <- tibble::tribble(
+  ~nom,
+  "Gaston",
+  "Spirou",
+  "Fantasio",
+  "Longtarin",
+  "Prunelle",
+  "Lebrac",
+  "Mlle Jeanne",
+  "De Mesmaeker"
+)
+
+spirou_fantasio <- tibble::tribble(
+  ~nom,
+  "Spirou",
+  "Fantasio",
+  "Marsupilami",
+  "Seccotine",
+  "Spip",
+  "Zorglub"
+)
+```
+
+```{r}
+gaston
+spirou_fantasio
+```
+
+À l'aide des fonctions décrites ci-dessus, on peut créer une table contenant les personnages qui apparaissent dans les BD de Gaston mais pas dans Spirou et Fantasio.
+
+```{r}
+setdiff(gaston, spirou_fantasio)
+```
+
