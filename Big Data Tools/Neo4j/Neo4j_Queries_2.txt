@@ -1,0 +1,54 @@
+#######################
+###    Malik Jan    ###
+### 08 October 2018 ###
+#######################
+
+R1
+
+MATCH (rr:Realisateur)-[:A_REALISE]-(film) RETURN rr
+
+R2
+
+matcH (ff:film) where ff.annee=2000 return ff.Titre
+
+R3
+
+match (rr:Realisateur)-[:A_REALISE]-(ff:film)-[:A_JOUE_DANS]-(nn:Acteur) WHERE nn.name="Tom Cruise" return rr
+
+R4
+
+match (a1:Acteur)-[:A_JOUE_DANS]-(ff:film)-[:A_JOUE_DANS]-(a2:Acteur) WHERE a2.name="John Travolta" return a1
+
+R5
+
+MATCH (aa:Acteur)-[*..2]-(nc:Acteur) where nc.name="Nicolas Cage" return aa
+
+R6
+
+MATCH (aa:Acteur)-[:A_JOUE_DANS]-(ff:film) where ff.Titre in ["Volte face", "Danse avec les loups"] return aa
+
+R7
+
+MATCH (aa:Acteur) where aa.name STARTs WITH "John" return aa
+
+R8
+
+MATCH (aa:Acteur)-[:A_JOUE_DANS]-(ff:film)-[:A_REALISE]-(rr:Acteur) where rr.name=aa.name return aa
+
+R9
+
+MATCH (aa:Acteur)-[:A_JOUE_DANS]-(ff:film) return aa.name, count(ff) ou count(*) ici
+
+R10
+
+MATCH (aa:Acteur)-[r:A_JOUE_DANS]-(ff:film) where r.role IS NULL return aa, ff
+
+R11
+
+match (a1:Acteur {name:"John Travolta"}), (a2:Acteur {name:"Tom Cruise"}), p=shortestPath((a1)-[*]-(a2)) where length(p)>1 return p
+
+R12
+
+match (aa:Acteur {name:"Nicolas Cage"})-[*]-(n) return aa, n
+
+match p = (t { name: "Nicolas Cage"}) -->() return p

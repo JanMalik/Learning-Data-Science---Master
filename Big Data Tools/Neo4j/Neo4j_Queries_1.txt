@@ -1,0 +1,23 @@
+#######################
+###    Malik Jan    ###
+### 04 October 2018 ###
+#######################
+
+sandbox
+mail : jannicolasmalik@gmail.com
+password : XXX
+
+I)
+
+CREATE (tc:Acteur {prenom:"Tom", nom:"Cruise"}), (kc:Acteur {prenom:"Kevin", nom:"Coster"}), (nc:Acteur {prenom:"Nicolas", nom:"Case"}), (jt:Acteur {prenom:"John", nom:"Travolta"}), 
+(co:Film {titre:"Cocktail", annee:"1988"}), (tj:Film {titre:"13 jours", annee:"2000"}), (lp:Film {titre:"Le pacte", annee:"2011"}), (bi:Film {titre:"Birdy", annee:"1984"}), (vf:Film {titre:"Volte face", annee:"1997"}), (dl:Film {titre:"Danse avec les loups", annee:"1990"}), (pf:Film {titre:"Pulp fiction", annee:"1984"}), (li:Film {titre:"Les incorruptibles", annee:"1997"}), (bo:Film {titre:"Blow out", annee:"1981"}), 
+(rd:Realisateur {prenom:"Roger", nom:"Donaldson"}), (ap:Realisateur {prenom:"Alan", nom:"Parker"}), (jw:Realisateur {prenom:"John", nom:"Woo"}), (qt:Realisateur {prenom:"Quentin", nom:"Tarantino"}), (bp:Realisateur {prenom:"Brian", nom:"de Palma"}), (ss:Realisateur {prenom:"Steven", nom:"Spielberg"})
+
+II)
+1.
+MATCH (tc:Acteur) WHERE tc.nom = "Tom Cruise" MATCH (kc:Acteur) WHERE kc.nom = "Kevin Coster" MATCH (jt:Acteur) WHERE jt.nom = "John Travolta" MATCH (nc:Acteur) WHERE nc.nom = "Nicolas Cage" MATCH (co:Film) WHERE co.titre = "Cocktail" MATCH (dl:Film) WHERE dl.titre = "Danse avec les loups" MATCH (tj:Film) WHERE tj.titre = "13 jours" MATCH (li:Film) WHERE li.titre = "Les incorruptibles" MATCH (bo:Film) WHERE bo.titre = "Blow out" MATCH (vf:Film) WHERE vf.titre = "Volte face" MATCH (lp:Film) WHERE lp.titre = "Le pacte" MATCH (bi:Film) WHERE bi.titre = "Birdy" CREATE (tc)-[:A_JOUE_DANS]->(co), (kc)-[:A_JOUE_DANS]->(dl), (kc)-[:A_JOUE_DANS]->(tj), (kc)-[:A_JOUE_DANS]->(li), (jt)-[:A_JOUE_DANS]->(bo), (jt)-[:A_JOUE_DANS]->(vf), (nc)-[:A_JOUE_DANS]->(lp), (nc)-[:A_JOUE_DANS]->(vf), (nc)-[:A_JOUE_DANS]->(bi) return tc, kc, jt, nc, co, dl, tj, li, bo, vf, lp, bi  
+
+2. A MODIFIER !
+MATCH (tc)-[m]-(co) SET m.role="Brian Flannagan" MATCH (jt)-[m]-(pf) SET m.role="Vincent Vega" MATCH (nc)-[m]-(bo) SET m.role="Curt May" MATCH (jt)-[m]-(bo) SET m.role="Jack Terry" RETURN tc, jt, nc
+ BIEN MAIS CHIANT 
+ MATCH (tc:Acteur) WHERE tc.nom= "Tom Cruise" MATCH (co:Film) WHERE co.titre = "Cocktail" MATCH (tc)-[r]-(co) SET r.role = "Brian Flannagan" return tc, r
