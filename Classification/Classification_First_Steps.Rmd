@@ -1,0 +1,200 @@
+---
+title: "Distnces, Similarités, Premières Classifications"
+author: "Malik Jan"
+date: "23 mars 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.Distances et dissimilarites
+
+## Sokal et Michener
+
+```{r}
+SokMichener = function(i,j){ #i et j deux individus (vecteurs)  
+  p    = length(i)
+  diss = sum(i!=j)/p
+  return(diss)
+}
+```
+
+Donnees:
+```{r}
+ExBinaire = read.table("donnees/exemple.dat") #27 individus et 19 variables binaires
+
+MatDiss = outer(as.data.frame(t(ExBinaire)),as.data.frame(t(ExBinaire)),Vectorize(SokMichener))
+MatDiss = as.dist(MatDiss)
+```
+
+## Distance chi-deux
+
+```{r}
+#install.packages("ade4")
+library(ade4)
+accidents = read.table("donnees/accidents.txt",header=TRUE)
+acc       = accidents[1001:2000,]
+p         = ncol(acc)
+
+```
+
+### Transformation des variables Nb_Blegers et Nb_BGrave en variables binaires
+```{r}
+acc$Nb_Blegers = as.numeric(acc$Nb_Blegers!=0) 
+acc$Nb_BGrave = as.numeric(acc$Nb_BGrave!=0)
+```
+
+### Recherche de variables manquantes
+
+*(0 dans les 4 premieres colonnes)*
+
+```{r}
+for (i in 1:4) acc[acc[,i]==0,i]=NA #concerne uniquement la variable n°3
+acc = na.omit(acc) #on retire les individus avec des donnees manquantes
+
+acc.disj = as.matrix(acm.disjonctif(acc)) #transformation en matrice pour accelerer les calculs
+```
+
+### Fonction
+
+```{r}
+chi2.dist = function(acc.disj,i,j){ #acc.disj : tableau disjonctif; i, j : indice des individus
+  njl = apply(acc.disj,2,sum) # effectif modalites
+  delta = abs(acc.disj[i,]-acc.disj[j,])
+  dist = sum(delta/njl) #distance du chi-deux a une constante multiplicative pres
+  return(dist)
+}
+```
+
+### Optimiser le code
+
+Pour optimiser le temps de calcul, on n'utilise pas la fonction definie au **(4)**.
+
+```{r}
+t = proc.time()
+njl = apply(acc.disj,2,sum)
+distk2 = sapply(1:nrow(acc),FUN=function(j){
+  apply(sapply(1:nrow(acc),FUN=function(i) abs(acc.disj[j,]-acc.disj[i,]),simplify = TRUE)/njl,2,sum)
+})
+proc.time()-t ## 14 secondes
+
+distk2 = as.dist(distk2)
+```
+
+## Distance de correlation
+
+Distance utile lorsqu'on s'interesse aux proximites de formes plutot que de valeurs:
+
+```{r}
+LoupChien = read.table("donnees/loup_chien.dat",header=TRUE)
+LCdata    = LoupChien[LoupChien$espece!="inconnu",1:3]
+LCespece  = LoupChien$espece[LoupChien$espece!="inconnu"]
+
+head(LCdata)
+CorDist = as.dist(cor(t(LCdata)))
+head(as.matrix(CorDist))
+```
+
+# 2.Classifiation Automatique
+
+## Donnees Iris
+
+```{r}
+summary(iris)
+help(iris)
+plot(iris)
+```
+
+```{r}
+summary(iris[1:50,])
+summary(iris[51:100,])
+summary(iris[101:150,])
+```
+
+## CAH
+
+```{r}
+dist.Iris <- dist(iris[,1:4])
+cah.ward.Iris = hclust(dist.Iris,method="ward.D2")
+plot(cah.ward.Iris,hang=-1)
+```
+
+### Choix du nmb de groupes
+
+```{r}
+plot(rev(cah.ward.Iris$height),type="b", main="Courbe : perte de l'inertie")
+# Choix du nombre de groupes de 3 ou 4 (moment du premier "grand saut")
+abline(h=c(3,4), col=c("blue","red"))
+gpe.ward.Iris3 = cutree(cah.ward.Iris,k=3)
+gpe.ward.Iris4 = cutree(cah.ward.Iris,k=4)
+plot(iris, pch=gpe.ward.Iris3, col=gpe.ward.Iris3)
+plot(iris, pch=gpe.ward.Iris4, col=gpe.ward.Iris4)
+groupes3=gpe.ward.Iris3
+groupes4=gpe.ward.Iris4
+#on va choisir 3 groupes car cela à l'air mieux rpz même s'il y a que une espèce très bien rpz et les deux autres se moins biens séparé
+```
+
+### Groupes: 3 & 4
+
+```{r}
+plot(cah.ward.Iris,hang=-1)
+rect.hclust(cah.ward.Iris, 3, border ="blue")
+```
+
+```{r}
+plot(cah.ward.Iris,hang=-1)
+rect.hclust(cah.ward.Iris, 4, border ="blue")
+```
+
+```{r}
+table(iris$Species, groupes3)
+#Après CAH, l'espèce setosa forme un groupe entier à lui même contrairement au deux autres espèces (même si chaque groupe est majoritairement composé d'une espèce)
+```
+
+```{r}
+table(iris$Species, groupes4)
+#De même pour la l'espèce setosa, les autres groupes sont formés des deux autres espèce mais cette fois sans avec un groupe de majorité 'extrême' présente par une espèces (groupe 2) 
+```
+
+## Cusplots
+
+```{r}
+library(cluster)
+help("clusplot")
+clusplot(iris[,1:4],groupes3, main="Clusplot Iris")
+clusplot(iris[,1:4],groupes4, main="Clusplot Iris")
+#cette rpz correspond au graphique de partition des Iris (la répartition par groupes), et la distance entre ses groupes.
+```
+
+# 3.Agrégation autour de centres mobiles 
+
+## K-means
+
+```{r message=FALSE, warning=FALSE}
+#help(kmeans)
+#paramètres : la bd, le nmb de groupes, le nmb d'itératin max de l'algorithme, nstars grand si données très grandes : ici 150 donc 10 au max c'est bien
+IrisKmeans <- kmeans(x=iris[,1:4],centers = 3, nstart = 50)
+Kgroupes <- as.factor(IrisKmeans$cluster)
+IrisKmeans <- cbind(iris, Kgroupes)
+IrisKmeans <- as.data.frame(IrisKmeans)
+library(plotly)
+plot_ly(data=IrisKmeans,  
+        x=IrisKmeans$Sepal.Length, 
+        y=IrisKmeans$Sepal.Width, 
+        z=IrisKmeans$Petal.Length, 
+        color=IrisKmeans$Kgroupes, 
+        colors = c("royalblue4", "gold", "darkgrey"))
+library(ggplot2)
+ggplot(IrisKmeans)+aes(x=IrisKmeans$Sepal.Length, fill=IrisKmeans$Kgroupes)+geom_bar()+labs(x="Sepal Length", y="Effectif", fill="Groupes")
+ggplot(IrisKmeans)+aes(x=IrisKmeans$Petal.Length, fill=IrisKmeans$Kgroupes)+geom_bar()+labs(x="Pepal Length", y="Effectif", fill="Groupes")
+ggplot(IrisKmeans)+aes(x=IrisKmeans$Sepal.Width, fill=IrisKmeans$Kgroupes)+geom_bar()+labs(x="Sepal Width", y="Effectif", fill="Groupes")
+ggplot(IrisKmeans)+aes(x=IrisKmeans$Petal.Width, fill=IrisKmeans$Kgroupes)+geom_bar()+labs(x="Pepal Width", y="Effectif", fill="Groupes")
+#le dernier graphique rpz bien la séparation du groupe 1 avec les autres groupes
+#le graph 2 et 4 rpz la séparation entre les deux autres groupes
+
+#en relancant plusieurs fois la fonction on remarque que les noms des groupes changent : cad que l'algorithme définit de facon aléatoire les groupes mais leurs caractéristiques sont les mêmes (plus au moins) : au final on gardera la meilleur classification : et c'est grace à l'option 'nstart' (nomnre d'initialisation aléatoire à essayer) c'est mieux d'en utiliser plus
+```
+
+

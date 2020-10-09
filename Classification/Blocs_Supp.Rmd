@@ -1,0 +1,191 @@
+---
+title: "Integration de bloques supplementaires - Classification"
+author: "Chevalier Mathilde & Malik Jan"
+date: "07 November 2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Import Data sets
+```{r, message=FALSE, warning=FALSE}
+library(readxl)
+hedonique <- read_xlsx("Saumon.xlsx")
+usage <- read_xlsx("Saumon.xlsx", sheet = "Usage")
+produits <- read_xlsx("Saumon.xlsx", sheet = "Mesures produits")
+```
+
+```{r}
+head(hedonique)
+head(produits)
+head(usage)
+```
+
+> Analyses
+
+Nous allons effectuer dans un premier temps des analyses factorielles et une classification hiérarchique sur composantes principales à partir des résultats:
+
+* sur les données hédoniques
+* sur les données hédoniques + bloque des usages en illustratif
+  + Juxtaposition
+* sur les données hédoniques + bloque des produits en illustratif
+  + Superposition
+*sur les données hédoniques + 4ième bloque
+  + Interaction Produit et Usage
+
+## Données hédoniques
+
+```{r, warning=FALSE}
+#ACP
+library(FactoMineR)
+res0 <- PCA(hedonique[,-c(1,2)])
+```
+
+> Pourquoi avoir enlever la variabe sur l'origine des produit ? 
+
+```{r, warning=FALSE}
+library(factoextra)
+fviz_pca_ind(res0,
+             geom.ind = "point", # Montre les points seulement (mais pas le "text")
+             col.ind = hedonique$Country, # colorer by groups
+             addEllipses = TRUE, # Ellipses de concentration
+             legend.title = "Groups"
+             )
+```
+On observe que l'origine du consommateur n'a pas l'air d'avoir une influence sur la valeur hédonique. On enlèvera la variable origine pour la suite de l'analyse.
+
+A partir des résultat de l'ACP on peut effectuer une classification des individus.
+
+```{r, message=FALSE}
+#Classification
+res.hcpc0 = HCPC(res0, nb.clust = 3)
+res.hcpc0$desc.var
+```
+
+> Observations des résultats : 
+
+* Le groupe 3 est former des individus ayant des valeurs (relativements) fortes sur les mesures hédoniques du produit 10 et (relativements) faibles pour produit 26
+* ...
+
+
+## Données hédoniques en intégrant le bloque usage
+
+Juxtaposition Hedonique et Usage : Actif et Illustratif
+
+```{r, message=FALSE, warning=FALSE}
+#Juxtaposition
+HedUsa <- cbind(hedonique, usage[,-1])
+HedUsa <- HedUsa[,-c(1,2)]
+#ACP
+res1 <- PCA(HedUsa, quali.sup = 31:98, graph=FALSE)
+plot.PCA(res1,label="quali", col.ind = "darkgrey", col.quali = "royalblue4")
+plot.PCA(res1,choix="var", select="contrib 10")
+```
+
+Le graphqiue des individus est difficile à lire mais on peut effectuer une classification pour mieux comprendre le lien entre les groupes d'individus des données hédoniques et des variables supplémentaires concernant l'usage d'un produit de cette individu.
+
+```{r, message=FALSE}
+#Classification
+res.hcpc1 = HCPC(res1, nb.clust = 3)
+res.hcpc1$desc.var
+```
+> Observations : 
+
+Idem que avant, plus :
+* Groupe 3 avec la variable caractérisant l'aspect salée du produit (ces individus semblent préférer un saumon lorsqu'il est plus salé qu'un autre).
+* ...
+
+## Données hédoniques en intégrant le bloque produit
+
+**Superpostion Hedonique et transposée Produit : Actifs et Illustratifs**
+On force cette superposition des mesures des produits hédoniques et de la transposée des données sur les produits (non hédoniques) et on obtient donc des indivudus fictifs (exemple : **Mister Salty**, individu fictif qui ne voit qu'au travers d'une seule dimension dans son jugement, la dimension salée).
+
+```{r, warning=FALSE}
+#Superposition
+tProd <- t(produits)[-1,]
+colnames(tProd) <- colnames(hedonique[,-(1:2)])
+HedProd <- rbind(hedonique[,-c(1,2)],tProd)
+HedProd <- apply(HedProd, 1, FUN=as.numeric)
+HedProd <- as.data.frame(t(HedProd))
+colnames(HedProd) <- colnames(hedonique[,-(1:2)])
+#ACP
+res2 <- PCA(HedProd, ind.sup = 1063:1088, graph = FALSE)
+plot.PCA(res2, col.ind="darkgrey", col.ind.sup = "royalblue4", label="ind.sup")
+```
+
+```{r, message=FALSE}
+#Classification
+res.hcpc2 = HCPC(res2, nb.clust = 3)
+res.hcpc2$desc.var
+```
+
+> Observations :
+
+Idem que avant, en plus :
+* **Mister Salty** semble être proche (en terme de distance) des idividus du groupe 3 qui est caractérisé par les mesures hédoniques du produit 10, ...
+* ...
+
+
+## Données hédoniques en intégrant les blogues usage et produit (interaction)
+
+Seul les données hédoniques seront en actif de l'ACP.
+
+```{r, warning=FALSE}
+#Création jeux de données (juxtaposition et superposition)
+Mat0 <- matrix(ncol=68, nrow=25, "None") #car variables illustratives de type qualitatives
+mat0 <- as.data.frame(Mat0)
+colnames(Mat0) <- colnames(usage[,-1])
+UsaMat <- rbind(usage[,-1], Mat0)
+Bloc4 <- cbind(HedProd, UsaMat)
+#ACP
+res3 <- PCA(Bloc4, ind.sup=1064:1088,quali.sup=31:98, graph = FALSE)
+plot.PCA(res3,col.ind="darkgrey", col.ind.sup = "darkblue", label="ind.sup")
+```
+
+```{r, message=FALSE}
+#Classification
+res.hcpc3 = HCPC(res3, nb.clust = 3)
+res.hcpc3$desc.var
+```
+
+> Observations :
+
+* Les individus du groupe 3 semblent préférer les produits (relativement) salés (tq le produit 10)
+* **Mister Salty** se trouve à une faible distance par rapport aux individus du groupe 3, cohérent vu ce qui à était dit précédement
+* ...
+
+> Cohérence ?
+
+Désormais nous devont vérifier si il y a une cohérence entre les individus fictifs et les réponses des individus (comme par exemple : y a t'il une cohérence entre **Mister Salty** et les réponses des individus appartenant au groupe 3?)
+
+Pour cela nous allons effectué une **ACP** puis une **CHCP** sur une base de données en 4 bloques, composée de :
+* Bloque 1 : données hédoniques ayant en lignes les produits et en colonnes les facteurs
+* Bloque 2 : données produits ayant les mêmes lignes et en colonnes les caractéristques
+  + Juxtaposition
+* Bloque 3 : données usage ayant en lignes les usages (qui deviendrons des **produits fictifs**) et en colonnes les juges
+  + Superposition
+Bloque 4 : interaction produit et usage
+
+```{r, warnings=FALSE, message=FALSE, comment=FALSE}
+#Création jeux de données à analyser
+hBis <- as.data.frame(t(hedonique[,-c(1,2)]))
+uBis <- as.data.frame(t(usage[, -1]))
+pBis <- produits[,-1]
+Mat0 <- matrix(ncol=25, nrow=68, 0) # car quantitatives
+Mat0 <- as.data.frame(Mat0)
+colnames(Mat0) <- colnames(pBis)
+
+#Superpositions
+huBis <- as.data.frame(rbind(hBis, uBis))
+pMat0 <- as.data.frame(rbind(pBis, Mat0))
+#Juxtaposition 
+NewBlocs <- as.data.frame(cbind(huBis, pMat0))
+#Numerisation
+NewBlocs[1:30,] <- apply(NewBlocs[1:30,], 1, as.numeric)
+NewBlocs[,1:1063] <- apply(NewBlocs[,1:1063], 2, as.numeric)
+
+#ACP
+#head(NewBlocs)
+resBis <- PCA(NewBlocs, ind.sup = 31:98, quanti.sup = 1064:1088)
+```
+

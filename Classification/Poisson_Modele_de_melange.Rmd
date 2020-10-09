@@ -1,0 +1,253 @@
+---
+title: <h1><CENTER> <br />Classification<br />Modèle de mélange<br />Mélange
+  de lois de Poisson<br />Algorithme EM<br />Malik Jan - 2 Avril 2018</CENTER><br /></h1>
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***Libraries necesaires***
+```{r echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+```
+
+### Création du tableau
+
+Ce tableau correspond à un relevé journalier du nombre de décès de femmes de 80 ans et plus, sur la période des années 1910-1912.
+
+```{r}
+x <- c(0,1,2,3,4,5,6,7,8,9) #Nombres de décès
+y <- c(162,267,271,185,111,61,27,8,3,1) #Nombres de jours
+donnees <- data.frame(rbind(x,y)) # pour pouvoir travailler sur l'algo EM
+tableau <- data.frame(cbind(x,y)) #On choisit d'utiliser la fonction "cbind" au lieu de la fonction "rbind" pour pouvoir directement utiliser la Data Frame pour générer plus facilement des graphiques
+```
+
+### 1. Data Viz : Barplots
+
+```{r}
+diagramme_batons <- ggplot(tableau)+aes(x=x, y=y)+geom_bar(stat="identity", fill="royalblue4")+theme_minimal()
+
+diagramme_batons+labs(x="Nombres de décès", y="Nombres de jours", title="Barplot de notre jeu de données")+geom_text(aes(label=y), vjust=-0.5, color="black",position = position_dodge(1), size=4)
+
+diagramme_prob <-  ggplot(tableau)+aes(x=x, y=y/sum(y))+geom_bar(stat="identity", fill="royalblue4")+theme_minimal()
+
+diagramme_prob+labs(x="Nombres de décès", y="Probabilité", title="Barplot de notre jeu de données : proportions")#+geom_text(aes(label=y/sum(y)), vjust=0, color="black",position = position_dodge(1), size=4)
+```
+
+# Modèle 1 :
+
+On commence par modéliser ces données comme un échantillon $i.i.d$ issu d'une variable $X$ suivant une loi de Poisson de paramètre $Î»$ :
+<CENTER> $f_{X}(x)=\frac{Î»^{x}}{x!}e^{-Î»}$ </CENTER>
+
+### 2. Expression EMV loi de Poisson
+
+Nous allons détailler le calcul de l'expression de l'estimateur de maximum de vraissemblance *(EMV)* dans un modèle de Poisson.
+
+***Rappel : ***
+La fonction $\mathcal{L}_{n} : (x_{1},...,x_{n} ; \theta) \mapsto \mathcal{L}_{n}(x_{1},...,x_{n} ; \theta) = \prod_{i=1}^{n} \mathbb{P}_{\theta}(\{ X_i = x_i \})$ pour des $X_i \hookrightarrow \mathcal{L}(\theta)$ s'appelle *la vraissemblance* de la loi $\mathcal{L}$.
+La $v.a$ obtenue en appliquant la fonction $(x_{1},...,x_{n} ; \theta) \mapsto Argmax_{\theta} \{ \mathcal{L}_{n}(x_{1},...,x_{n} ; \theta) \}$ appliqué au $n$-échantillon $(X_1,...,X_n)$ s'apelle *l'estimateur au maximum de vraissemblance* du paramètre $\theta$ de la loi discrète $\mathcal{L}$.
+
+Supposons que le tirage d'un $n$-échantillon $(X_1,...,X_n)$ de $v.a$ suivant une loi de Possion $\mathcal{P}(\lambda)$, oÃ¹ $\lambda > 0$ est inconnu, ait produit l'échantillon $x_{1},...,x_{n}$. Ici $\theta = \lambda$, et $\mathbb{P}_{\theta}(\{ X_i = x_i \})= \frac{\theta^{x_i}}{x_i !} e^{-\theta}$ ; la vraissemblance de l'échantillon $x_1,...,x_n$ est donc donnée ici :
+$\mathcal{L}_{n} : (x_{1},...,x_{n} ; \lambda) = \prod_{i=1}^{n} \frac{\lambda^{x_i}}{x_i !} e^{-\lambda}$
+$\mathcal{L}_{n} : (x_{1},...,x_{n} ; \lambda) = e^{-n \lambda} \ \frac{\lambda_{\sum_{i=1}^{n}x_i}}{\prod_{i=1}^{n} x_i !}$,
+
+et donc 
+
+$\mathcal{L}_{n} : (x_{1},...,x_{n} ; \lambda) = e^{-n \lambda} \ \frac{\lambda^{s}}{\prod_{i=1}^{n} x_i !}$, oÃ¹ l'on pose $s:= x_1+...+x_n$.
+Il est plus commode de calculer l'expression *EMV* avec le logarithme $ln$, et comme $ln$ est une fonction croissante il suffit de rechercher le maximum de $\lambda^{*}$ de :
+
+<CENTER>  $l_n(x_1,...,x_n;\lambda)=ln(\mathcal{L}_{n} : (x_{1},...,x_{n} ; \lambda)=-n\lambda + s \ ln(\lambda) - \sum_{i=1}^{n} ln(x_i !)$. </CENTER>
+
+Cette fonction est concave et son extremum $\lambda^*$ est donc le zéro de la dérivée $-n+\frac{s}{\lambda}$, c'est à dire $\lambda^* = \frac{s}{n}$.
+
+Nous trouvons donc $\lambda^{MV} := \frac{X_1+...+X_n}{n}$ comme estimateur de $\lambda$ (de plus $\lambda=\mathbb{E}(X_i)$ pour toute $v.a X_i$ suivant une loi de Poisson de paramètre $\lambda$).
+
+
+### 3. La valeur de l'EMV sur nos données
+
+Nous allons déterminer la valeur de $\lambda^{MV}$ estimée par maximum de vraissemblance sur nos donées.
+
+On sait que $\lambda^{MV} := \frac{X_1+...+X_n}{n}$, et ici n=10 et pour $i=1,...,10 ; X_i$ est la $v.a$ suposans suivre une loi de Poisson de paramètre $\lambda > 0$ et correspond au nombre de décès journalier de femmes de plus de 80 ans et plus sur la période 1910-1920.
+
+```{r}
+n=length(donnees) #10
+lambdaMV = sum(donnees[1,])/n
+print(paste("n = ", n, sep = ""))
+print(paste("lambda MV = ", lambdaMV, sep = ""))
+```
+
+Sur nos données, $\lambda^{MV} = 4,5$.
+
+### 4.1. Barplots pour la loi de Poisson ajustée
+
+```{r}
+#Création d'une troisième ligne correspondant à la loi de Poisson ajustée, qu'on nommera p pour les probabilités
+(p <- dpois(x, lambdaMV, log = F))
+#y/sum(y)
+#p 
+#sum(y/sum(y)) = 1
+#sum(p) presque égale à 1
+donnees_bis <- data.frame(rbind(donnees, p))
+tableau2 <- data.frame(cbind(tableau, p))
+
+diagramme_ajustee <- ggplot(tableau2)+aes(x=x, y=y/sum(y))+geom_bar(stat="identity", fill="royalblue4")+labs(x="Nombres de décès", y="Probabilité", title="Barplot : nombres de décès \nselon la base de données et la loi de Poisson ajustée")
+
+diagramme_ajustee+geom_line(aes(x,p), color="red", size=2,linetype = "dashed")+geom_point(aes(x,p), size=2.5)
+```
+
+# Modèle 2 :
+
+### 4.2. Paramètres à estimer
+
+On suppose à présent que la loi du nombre de décès peut être modélisée par une variable $Y$ suivant un mélange de deux lois de Poisson (présence d'un effet saisonnier par exemple).
+
+<CENTER> $Y \sim \sum_{k=1}^{2} \pi_k \mathcal{P}(\lambda_k)$ </CENTER>
+
+Ajuster un modèle consiste à estimer les paramètres de celui-ci à l'aide des observations. Les paramètres de ce modèle qui sont à estimer sont : les proportions $\pi_k$ et les paramètes des distributions $\lambda_k$.
+
+### 5. Algorythme EM.
+
+Rappelons le principe de l'algorithme EM pour l'ajustement d'un modèle à deux composantes. EN particulier, nous allons détailler les étapes E et M dans le cas d'un mélange de lois de Poisson.
+
+Premièrement, précissons ce qu'est un mélange de lois de Poisson.
+
+On suppose que les individus sont issus de $K$ groupes ou *populations* (avec $K$ fixé : ici 2). Les réalisations $x_1,...,x_n$ sont supposées êtres des réalisations indépendantes de $v.a$ : $X_1,...,X_n$. POur tout $i \in 1,...,n$ la distribution (loi) de la $v.a$ $X_i$ dépend du groupe auquel $i$ appartient. 
+On commence par introduire la $v.a$ $Z_i$ pour caractériser l'appartenance de l'individu $i$ à un groupe de manière suivante :
+
+$Z_i = (Z_{i1},...,Z_{iK})$ est un ***vecteur aléatoire*** tel que :
+
+<CENTER> $Z_{ik} = \left\{\begin{array}{rcr} 1 & si \ l'individu \ i \ appartient \ à \ la \ population \ k \\ 0 & sinon \\ \end{array} \right.$ </CENTER>
+
+Chaque variable binaire $Z_ik$ suit une loi de Bernouilli de paramètre $\pi_k = \mathbb{P}(Z_{ik}=1)$. $\pi_k$ est la probabilité *a priori* (car elles ne dépendent pas des observations) que l'individu $i$ appartiennent à la population $k$, autrement dit : $\pi_k$ est la taille de la population $k$.
+On dit donc que le vecteur aléatoire $Z_i$ suit une loi multinomiale de paramètres $1$ et $\pi_1,...,\pi_K$ et on note $Z_i \sim \mathcal{M}(1;\pi_1,...,\pi_K)$.
+
+Sachant que l'individu $i$ appartient à la classe $k$, on suppose que $X_i$ suit une certaine loi (ici de Possion) de densité $f_k = f_{X_i | \{ Z_{ik}=1 \}}$, oÃ¹ $f_k$ est la distribution au sein de la population $k$. On se limiteta par aux famille de lois paramétrées, c'est à dire : $f_k(.)=f(.,\theta_k)$, oÃ¹ $\theta_k$ est le vecteur des paramètres dans la population $k$.
+
+De plus, on considère que dans toutes les populations, le type de loi est le même (ici des lois de Poisson),seuls changent les paramètres $\theta_k$ (ici $\lambda_k$).
+
+On peut aussi considérez la loi du couple $(X_i, Z_i)$ (par abus de notation) : 
+
+<CENTER>  $$f(x_i, z_i)=f(z_i)f(x_i | z_i)=\pi_{z_i}f(x_i,\theta_{z_i}) $$ ; </CENTER> oÃ¹ $\pi_{z_i}=\pi_k$ si l'individu $i$ est dans la population $k$, et $\theta_{z_i}$ est le vecteur de paramètres de la population dont provient l'individu $i$ ($\theta_k$ si $i$ est dans la classe $k$).
+
+On a donc : 
+
+$$f(x_i)=\sum_{k=1}^{K} \pi_k f(x_i,\theta_k)$$
+
+Ici, dans le cas d'un mélange de lois de Poisson avec $K=2$ (et $k=1,2$) caractérisé par son paramètre de moyenne $\lambda_k$ on a : 
+
+<CENTER> $\theta_k = \lambda_k$ et $f_k(x)=\frac{\lambda_{k}^{x}}{x!} e^{-\lambda_k}$ pour $x \in \mathbb{N}$ </CENTER>
+
+Et ici, le modèle de mélange de Poisson s'écrit alors : 
+<CENTER> $X_i \sim \sum_{k=1}^{2} \pi_k \mathcal{P}(\lambda_k)$ </CENTER>
+
+Une fois le modèle de mélange possé, on peut efectuer les estimations des paramètre via l'*EMV* :
+
+-> vraissemblance des donnés incomplètes : 
+
+<CENTER> $\mathcal{L}(X;\phi)=\prod_{i=1}^{10}f(x_i)=\prod_{i=1}^{10}[\sum_{k=1} \pi_k f(X_i;\lambda_k)]$,  </CENTER>
+
+-> d'oÃ¹ la log-vraissemblance des données incomplètes :
+
+<CENTER> $log \mathcal{L}(X;\phi)=\sum_{i=1}^{10}log[\sum_{k=1} \pi_k f(X_i;\lambda_k)]$, </CENTER>
+
+-> on cherche alors (le maximum de la fonction par rapport aux paramètres) :
+
+<CENTER> $$\frac{\partial log \mathcal{L}(X;\phi)}{\partial \phi} = 0 $$. <C/CENTER>
+
+
+Mais l'optimasisation d'une telle vraissemblance est difficile, on obtient pas de formule simple et tout cela vient de l'algorithme de a somme. On a donc besoin d'un ***algorithme itératif*** pour cette optimisation : ***l'algoruthme EM*** (Expactation-Maximisation).
+Dans l'étape E on calcule la vraissemblance conditionnelle et dans l'étape M on maximise la vraissemblance conditionnelle.
+
+###Principe :
+
+A l'itération [h], on a une estimation courante des paramètres du modèle $\phi^{[h]}$. L'algorithme se déroule donc en deux étapes comme décrit ci-dessus.
+
+**Etape E** : Calcul de l'espérance de la vraissemblance conditionnellement aux donées : cela revient à prédire les lables individuels, c'est à dire, à calculer les probabilités d'appartenances a *a posteriori* : 
+
+<CENTER> $\widehat{\tau}_{ik}^{[h+1]}=\frac{\pi_k^{[h]} f(x_i;\lambda_k^{[h]})}{\sum_{k=1}^{2}\pi_k^{[h]}f(x_i,\lambda_k^{[h]})}$, </CENTER>
+
+**Etape M** : Maximisation de l'espérance conditionnelle de la vraissemblance calculée dans l'étape E par rapport aux paramètres $\phi$ : cela revient à maximiser l'expression en ayant remplacé les $\mathbb{E}_{\phi^{[h]}}[Z_{ik} | X]$ par les valeurs $\widehat{\tau}_{ik}^{[h+1]}$ obtenues à l'étape E. On cherche donc à maximiser en fonction de chaque paramètre : 
+<CENTER> $\widehat{\phi}^{[h+1]}=arg max_{\phi}[\mathbb{E}_{\phi^{[h]}}(log\mathcal{L}(X,Z;\phi | X)]$. </CENTER>
+
+
+### 6. Implémentation de l'algorithme EM sous R
+
+```{r}
+algoEM = function(data,nbcomp,epsilon){
+  n   = length(data)
+  eps = 1
+  #initialisation k-means
+  km.init = kmeans(data,centers=nbcomp,nstart=30) 
+  pik     = km.init$size/n
+  muk     = as.vector(km.init$centers)
+  sigma2k = km.init$withinss/km.init$size
+  
+  resM.old = c(pik,muk,sigma2k)
+  llik     = sum(log(apply(sapply(1:nbcomp,FUN=function(j) pik[j]*dnorm(data,muk[j],sqrt(sigma2k[j]))),1,sum)))
+  
+while (eps>epsilon){
+  #Etape E
+  num_tauik= sapply(X = 1:2,FUN= function(i){pik[i]*dpois(x=data,muk[i])})
+  den_tauik = apply(X = num_tauik,MARGIN=1,sum)
+  tauik=t(sapply(X = 1:n,FUN= function(i){num_tauik[i,]/den_tauik[i]}))
+  #Etape M
+  pik = c()
+  for (i in 1:nbcomp){
+    pi=(1/nrow(tauik))*sum(tauik[,i])
+    pik=c(pik,pi)
+  }
+  
+  muk=c()
+  for (i in 1:nbcomp){
+    mu=(sum(tauik[,i])^-1)*sum(tauik[,i]*data)
+    muk=c(muk,mu)
+  }
+  
+  sigma2k=c()
+  for (i in 1:nbcomp){
+    sigma2=(sum(tauik[,i])^-1)*(sum(tauik[,i]*(data-muk[i])^2))
+    sigma2k=c(sigma2k,sigma2)
+  }
+  
+  
+  #calcul critere d'arret
+  eps = sum((c(pik,muk,sigma2k)-resM.old)^2)/sum(resM.old^2) 
+  resM.old = c(pik,muk,sigma2k)
+  
+  #calcul log-vraisemblance
+  llik = c(llik,sum(log(apply(sapply(1:nbcomp,FUN=function(j) pik[j]*dnorm(data,muk[j],sqrt(sigma2k[j]))),1,sum))))
+  #eps  = (rev(llik)[1]-rev(llik)[2])/abs(rev(llik[2]))
+  }  
+ resEM = list(tauik = tauik, pik = pik, muk = muk, sigma2k = sigma2k, llik = llik)
+ return (resEM)
+}
+#création de la table Deces pour l'utilisation de l'algorithme EM
+Table_Deces = c(rep(0,162),rep(1,267),rep(2,271),rep(3,185),rep(4,111),rep(5,61),rep(6,27),rep(7,8),rep(8,3),rep(9,1))
+Modele=algoEM(Table_Deces,2,10^-5)
+Resultats=list(Pik=Modele$pik,Lambda=Modele$muk) #les réultats des estimateurs pi1 , pi2, lambda1 et lamba2 suite à l'algorithme EM
+Resultats #affichage des estimateur
+```
+
+### 7. Barplot du mélange de lois de Poisson
+
+```{r}
+diagramme_modeleMelange <- ggplot(tableau)+aes(x=x, y=y/sum(y))+geom_bar(stat="identity", fill="royalblue4")+labs(x="Nombres de décès", y="Probabilité", title="Barplot des estimateurs \ndu mélange de lois de Poisson")#+geom_line(aes(x,dpois(x, Res$lambdak[1:2], log=F)), color="red", size=2,linetype = "dashed")
+p1 <- dpois(x, Resultats$Lambda[1], log = F) #en rouge
+p2 <- dpois(x, Resultats$Lambda[2], log=F) #en vert
+
+diagramme_modeleMelange + 
+  geom_line(aes(x,p1), color="red", size=2,linetype = "dashed") +
+  geom_line(aes(x,p2), color="green", size=2,linetype = "dashed")
+
+```
+
+### 8. Conclusion après études des deux modèles :
+
+Le second modèle, le modèle de mélange de lois de Poisson, est le plus pertinant des deux modèles pour expliquer (en prenant compte des deux courbes : tout d'abord de la rouge puis ensuite de la verte à partir de l'intersection de ces deux). En effet, la courbe sur le second diagramme en bâtons à l'air de suivre avec plus de précision les bâtons du graphiques. Cela est dû au rapport avec la classification : en faire deux groupes permet de faire de meilleures estimations.
