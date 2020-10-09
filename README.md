@@ -43,7 +43,7 @@ See more on my GitLab Account here [https://gitlab.com/JanMalik/R-Shiny-Apps].
 ### Big Data tools
 
   * 'Beer ABV Project':
-    + Scripts of Data Manipulation, DataViz in Python:
+    + Scripts and Jupyter Notebook of Data Manipulation, DataViz in Python:
       + NumPy,
       + Pandas,
       + matplotlib,
