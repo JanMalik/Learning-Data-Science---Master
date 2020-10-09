@@ -1,0 +1,46 @@
+---
+title: "RFM 2014 & RFm 2016"
+author: "Jan Malik"
+date: "15 March 2018"
+output: html_notebook
+---
+
+# Que sont-ils devenus ?
+
+```{r}
+TBC2014 = read.csv("TBC_2014.csv",header=TRUE,sep=";")
+
+library(ggplot2)
+
+levels(TBC2014$TYPO_16) <- c("Très bons","Bons","Pertes","Petits","Faibles","Inactifs")
+ggplot(TBC2014) + aes(x=TYPO_16,fill=TYPO_16) + geom_bar() + xlab("Segments") + ylab("Effectif") + ggtitle("Que sont devenus les Très bon clients de 2014 ?")
+
+table(TBC2014$TYPO_16)
+mean(TBC2014$AGE_16[TBC2014$TYPO_16=="Très bons"],na.rm = T)
+mean(TBC2014$AGE_16[TBC2014$TYPO_16=="Bons"],na.rm = T)
+mean(TBC2014$AGE_16[TBC2014$TYPO_16=="Pertes"],na.rm = T)
+```
+
+
+# Profils types 2016
+
+```{r}
+TBC2016 = read.csv("TBC_2016.csv",header = TRUE,sep=";")
+
+#On ne garde que la RFM 2016 : 
+TBC2016 = TBC2016[,30:57]
+
+table(TBC2016$SEXE_16)
+
+
+#Chiffres
+sum(TBC2016$SEXE_16[TBC2016$SEXE_16==2]/2)/3250
+mean(TBC2016$AGE_16,na.rm = TRUE)
+mean(TBC2016$CA_MOY_VISITE_16)
+mean(TBC2016$NB_VISITE_16)
+mean(TBC2016$MONTANT_CUMULE_16)
+mean(TBC2016$ANCIENNETE_16,na.rm = T)*12/360
+mean(TBC2016$NB_CADEAUX_16)
+
+```
+

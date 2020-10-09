@@ -1,0 +1,313 @@
+---
+title: "RFM 2016 - Tres bon clients"
+author: "Jan Malik"
+date: "15 March 2018"
+output: html_notebook
+---
+
+> Aparte
+
+
+  * Belles couleurs : *scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))*
+  * Contexte & objectifs
+  * Presentation entreprise + objectifs segmentations
+
+# Import Packages
+
+```{r}
+## resultat pour notre groupe tres bon
+library(dplyr)
+library(ggplot2)
+# Installer
+#install.packages("wesanderson")
+# Belles couleurs
+library(wesanderson)
+```
+
+
+# Presentation des résultats de l'analyse RFM
+
+## Tres bon clients
+```{r}
+RFM=na.omit(tbl_df(read.csv(file="r_ANALYSE_RFM2016.csv",header = T,sep=';')))
+RFM2=read.csv(file="r_ANALYSE_RFM2016.csv",header = T,sep=';')
+tres_bon=filter(RFM2,TYPO=='01_TRES_BONS')
+head(tres_bon)
+```
+
+## CA
+
+```{r}
+# General CA
+CA <- sum(na.omit(RFM2$MONTANT_CUMULE))
+paste("CA :",CA)
+
+# Tres bon clients CA
+CATB <- sum(tres_bon$MONTANT_CUMULE)
+paste("CA Tres bon clients:",CATB)
+
+paste("Tres bon clients CA proportion:",round(CATB/CA,2)*100,"%")
+
+New <- filter(RFM2, TYPO=='06_NOUVEAUX')
+NewCa <- sum(New$MONTANT_CUMULE)
+paste("CA Nouveaux clients :", NewCa)
+
+paste("Nouveaux clients CA proportion:",round(NewCa/CA,2)*100,"%")
+```
+
+# Clients : type classique
+
+## Âge
+
+```{r}
+## presentation client âge moyen/ localisation client / depense moyenne par visite et sur la periode
+# moyen âge
+age=RFM2$AGE
+age_moyen=mean(age,na.rm = T)
+ageTB=tres_bon$AGE
+paste("Age moyen de tout les clients :",round(age_moyen,0))
+age_moyenTB=mean(ageTB, na.r = T)
+paste("Age moyen des Tres bon clients :",round(age_moyenTB,0))
+paste("Difference Age moyen des Tres bon clients par raport à toute la clientele :",round(age_moyenTB-age_moyen,3))
+```
+
+Pas de conclusion pertinantes.
+
+## Nombre de visites
+
+```{r}
+# nb visite
+nb_visites_moyenne <- mean(RFM2$NB_VISITE,na.rm = T)
+paste("Nmb de visites en moyenne de tout les clients :",round(nb_visites_moyenne,1))
+nb_visites_moyenneTB <- mean(tres_bon$NB_VISITE, na.rm = T)
+paste("Nmb de visites en moyenne des Tres bon clients :",round(nb_visites_moyenneTB,1))
+paste("Difference de la moyenne du nmb de visites des Tres bon clients par raport à toute la clientele :",round(nb_visites_moyenneTB-nb_visites_moyenne,1))
+```
+
+Comme prévu: les très bon clients visites plus les magasins.
+
+## Nombre d cadeaux
+
+```{r}
+nb_cadeau_moyenne <- mean(RFM2$NB_CADEAUX, na.rm = T)
+paste("Nmb de caeaux en moyenne de tout les clients :",round(nb_cadeau_moyenne,1))
+nb_cadeau_moyenneTB <- mean(tres_bon$NB_CADEAUX, na.rm = T)
+paste("Nmb de cadeaux en moyenne des Tres bon clients :",round(nb_cadeau_moyenneTB,1))
+paste("Difference de la moyenne du nmb de cadeaux des Tres bon clients par raport à toute la clientele :",round(nb_cadeau_moyenneTB-nb_cadeau_moyenne,1))
+```
+
+Comme prévu: les très bon clients reçoivent plus de cadeaux.
+
+## Localisation client
+
+```{r}
+# localisation client
+table(na.omit(RFM2$REGIONS))
+paste(round(1035/3250,2)*100,"%")
+table(tres_bon$REGIONS)
+library(ggplot2)
+localisation=ggplot(data = RFM2)+aes(x=REGIONS, fill=REGIONS)+geom_bar()
+localisation+scale_fill_manual(values=c("#E69F00", "#56B4E9"))+labs(title="Répartition des clients par région", x="Régions", y="Effectif")
+localisationTB=ggplot(data = tres_bon)+aes(x=REGIONS, fill=REGIONS)+geom_bar()
+localisationTB+scale_fill_manual(values=c("#E69F00", "#56B4E9"))+labs(title="Répartition des très bon clients par région", x="Régions", y="Effectif")
+```
+ Quasiment un tiers des clients sont situé sur Paris.
+
+## Dépenses moyennes
+
+### Moyenne
+
+```{r}
+# depense moyenne par visite 117€
+
+CA_moyenne <- mean(RFM2$CA_MOY_VISITE,na.rm = T)
+CA_moyenne
+CA_moyenneTB <- mean(tres_bon$CA_MOY_VISITE, na.rm = T)
+CA_moyenneTB
+CA_moyenneTB-CA_moyenne
+```
+
+### Periodique
+
+```{r}
+# depense moyenne sur la periode
+
+mt_moyenne <- mean(RFM$MONTANT_CUMULE,na.rm = T)
+mt_moyenne
+
+mt_moyenneTB <- mean(tres_bon$MONTANT_CUMULE,na.rm = T)
+mt_moyenneTB
+
+mt_moyenneTB-mt_moyenne
+```
+
+Les très bon cients cumulent plus de dépenses malgré des dépenses inférieures à la moyenne par passage (car plus de passage en tout).
+
+### Age
+
+```{r fig.height=8, fig.width=12}
+# depense moyenne sur la periode en fonction de l'age
+
+tab=data.frame(RFM2$AGE,RFM2$MONTANT_CUMULE)
+tab=na.omit(tab)
+tabTB=data.frame(tres_bon$AGE,tres_bon$MONTANT_CUMULE)
+tabTB=na.omit(tabTB)
+
+groupe_age=cut(tab$RFM2.AGE,breaks = c(0,15,20,25,30,35,40,45,50,55,60,65,70,75,90))
+groupe_ageTB=cut(tabTB$tres_bon.AGE,breaks = c(0,15,20,25,30,35,40,45,50,55,60,65,70,75,90))
+tab=data.frame(tab,groupe_age)
+tabTB=data.frame(tabTB, groupe_ageTB)
+
+names(tab)=c('age','montant_cumule',"Intervalle_age")
+names(tabTB)=c('age','montant_cumule',"Intervalle_age")
+
+summary(tabTB$Intervalle_age)
+
+T40_50=filter(tab,Intervalle_age=="(40,45]")
+sum(T40_50$montant_cumule)
+
+
+ggplot(tab)+aes(x=Intervalle_age,col=montant_cumule, fill=Intervalle_age)+geom_bar()+labs(title="Repartition du CA par groupe d'age", x="age", y="Effectif")
+ggplot(tabTB)+aes(x=Intervalle_age,col=montant_cumule, fill=Intervalle_age)+geom_bar()+labs(title="Repartition des tres bon clients par groupe d'age", x="age", y="Effectif")
+
+ggplot(data=RFM2, aes(x=TYPO, y=MONTANT_CUMULE, fill=TYPO)) +
+  geom_bar(aes(y = (..count..)/sum(..count..), stat="identity"))+
+  scale_fill_brewer(palette="Spectral")+
+  labs(x="Typologies", y="CA", title="Répartion du CA")
+
+summary(tab)
+summary(tabTB)
+```
+
+# Localisation - graphs
+
+```{r warning=FALSE, message=FALSE, fig.height=8, fig.width=12}
+#localisation
+
+summary(RFM$REGIONS)
+11840/(24113+11840)
+24113/(24113+11840)
+980/(980+2053)
+2053/(980+2053)
+
+#35955 clients, 3253 tres bon
+
+
+typo<- ggplot(RFM2) +
+  aes(x=TYPO,col=TYPO, fill=TYPO) +
+  geom_bar(aes(y = (..count..)/sum(..count..),fill=TYPO))
+
+typo +
+  scale_color_brewer(palette="Spectral") +
+  scale_fill_brewer(palette="Spectral") +
+  labs(y="Proportion", x="Typologie", title="Repartition des clients apres RFM") #+ 
+  #geom_text(aes(label=len), vjust=1.6, color="white", size=3.5)
+
+summary(RFM2$TYPO)
+
+ggplot(data=RFM2, aes(x=TYPO, y=MONTANT_CUMULE, fill=TYPO)) +
+  geom_bar(stat="identity")+
+  scale_fill_brewer(palette="Spectral")+
+  labs(x="Typologies", y="CA", title="Répartion du CA")
+
+
+3250+796+866+980+1829+8745+19489
+3250/35955
+796/35955
+866/35955
+980/35955
+1928/35955
+8745/35955
+19489/35955
+9.1+2.2+2.4+2.3+5.4+24.4+54.2
+
+
+#install.packages("plotrix")
+library(plotrix)
+TypoC <- RFM2%>% select(TYPO) 
+
+summary(TypoC)
+
+x=c(3250, 796, 866, 980, 1829, 8745, 19489)
+tot <- 3250+796+980+1829+8745+19489
+3250/tot
+796/tot
+866/tot
+980/tot
+1829/tot
+8745/tot
+19489/tot
+9.26+2.26+2.46+2.79+5.21+24.92+55.54
+lbls <- c("TRES BONS","BONS","PERTES","PETITS","FAIBLES","NOUVEAUX","INACTIFS")
+pie3D(x, labels=lbls, explode=0.1, main="Typologies des clients", col = c("red", "darkgoldenrod3", "darkgoldenrod1", "yellow", "yellowgreen", "seagreen4", "royalblue4"))
+## stat bi-variées
+```
+
+# Client type Tres Bon
+
+## Age
+
+```{r}
+age=tres_bon$AGE
+mean(age,na.rm = T)
+```
+
+## Localisation
+
+```{r}
+# localisation client
+table(tres_bon$REGIONS)
+ggplot(data = tres_bon)+aes(x=REGIONS)+geom_bar()
+```
+
+## Depense Moyenne
+
+### Par Visite
+
+```{r}
+# depense moyenne par visite 117€
+mean(tres_bon$CA_MOY_VISITE,na.rm = T)
+```
+
+### Periodique
+
+```{r}
+# depense moyenne sur la periode
+paste("Montant cumule:",round(mean(tres_bon$MONTANT_CUMULE,na.rm = T),2))
+paste("Nmb de visite:",round(mean(tres_bon$NB_VISITE,na.rm = T),0))
+paste("Depense moyenne par visite:", round(mean(tres_bon$MONTANT_CUMULE,na.rm = T)/mean(tres_bon$NB_VISITE,na.rm = T),2))
+ggplot(RFM2)+aes(x=TYPO,col=TYPO)+geom_bar(aes(y = (..count..)/sum(..count..),fill=TYPO))+xlab("typologie")+ylab("proportion")
+```
+
+
+## Plo_ly
+```{r message=FALSE, warning=FALSE}
+#install.packages('Plot_ly')
+library(plotly)
+
+Typo=unique(RFM2$TYPO)
+Typo
+df=data.frame()
+df_final=data.frame()
+for (i in Typo){
+  df=RFM2%>% filter(TYPO==i) %>% summarise(moy_Montant_Cumule=mean(MONTANT_CUMULE,na.rm=T),
+                                                moy_NB_Visite=mean(NB_VISITE,na.rm=T),
+                                                moy_Recence=mean(RECENCE,na.rm=T))
+  df_final=rbind(df_final,df)
+}
+
+
+df_final=cbind(Typo,df_final)
+
+Typo3D <- plot_ly(data=df_final,x=~moy_Montant_Cumule,
+        y=~moy_NB_Visite,z=~moy_Recence,
+        color=df_final$Typo, colors = c("red", "darkgoldenrod3", "darkgoldenrod1", "yellow", "yellowgreen", "seagreen4", "royalblue4" ))
+Typo3D
+
+Typo3D_TB <- plot_ly(data=df_final,x=~moy_Montant_Cumule,
+                     y=~moy_NB_Visite,z=~moy_Recence,
+        color=df_final$Typo, colors = c("red", "darkgray", "darkgray", "darkgray", "darkgray", "darkgray", "darkgray" ))
+Typo3D_TB
+
+```
+

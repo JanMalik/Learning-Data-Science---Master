@@ -1,0 +1,55 @@
+---
+title: "Classification Consommateur"
+author: "Jan Malik"
+date: "15 March 2018"
+output: html_notebook
+---
+
+> Import Dataset
+
+```{r}
+TBC = read.csv("TBC_2016.csv",header=TRUE,sep=";")
+TBC = TBC[30:57]
+TBC = TBC[,c(2,9,10,12,13,14,15,16,17)]
+```
+
+
+# K-Means
+
+On applique les K-means:
+
+```{r}
+TBC = as.data.frame(apply(TBC,2,FUN=function(x) replace(x,is.na(x),mean(x,na.rm=TRUE))))
+
+groupes.kmeans <-  kmeans(TBC,centers=3,nstart=3)
+print(groupes.kmeans)
+
+groupes=as.factor(groupes.kmeans$cluster)
+TBC_groupe=cbind(TBC,groupes)
+names(TBC_groupe)=c("ANCIENNETE", "MONTANT_CUMULE", "NB_VISITE", "NB_PRDT_MOY_VISITE", "RECENCE", "NB_MAG_DIFF", "NB_LIGNE_DIFF", "NB_FAMILLE_DIFF", "NB_CADEAUX", "groupes")
+```
+
+# 3D Plot
+
+Graphique *'3D MONTANT_CUMULE_16 NB_VISITE_16 NB_CADEAUX_16'*:
+
+```{r message=FALSE, warning=FALSE}
+#install.packages("plotly")
+library(plotly)
+
+
+levels(TBC_groupe$groupes)=c('Bronze', 'Silver', 'Gold')
+
+
+classification <- plot_ly(data=TBC_groupe,x=~RECENCE,
+        y=~NB_VISITE,z=~MONTANT_CUMULE,
+        color=~groupes, colors=c("darkgoldenrod", "darkgrey", "Gold2"))
+classification
+
+classification2 <- plot_ly(data=TBC_groupe,x=~NB_CADEAUX,
+                          y=~NB_LIGNE_DIFF,z=~NB_FAMILLE_DIFF,
+                          color=~groupes, colors=c("darkgoldenrod", "darkgrey", "Gold2"))
+classification2
+    
+summary(TBC_groupe)
+```
