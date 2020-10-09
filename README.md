@@ -95,14 +95,30 @@ School Project of a RFM Consumer Segemntation: Récence-Fréquence-Montant (Rece
 ### DataViz
 
   * ggplo2:
+   + Notebook of ggplot queries.
   * Guyana:
+   + Notebook with Guyana Cartography using leaflet,
+   + The Guyana Cartography using leaflet put into a R Shiny App.
   * Leaflet:
+   + Notebooks with a Leaflet Cartography for a community project in my neighborhood.
   * Old School:
+   + Notebook to generate plots into a pdf file using basic R features,
+   + pdf files of generated plots.
   * Sporting Equipment France:
+   + R Shiny App using ggplot2 and ggmap for Sport equipments/facilities in France,
+   + More available on my GitLab Account here[https://gitlab.com/JanMalik/R-Shiny-Apps].
   * Visu_WWII:
-    + Available on GitLab
+   + R Shiny App using leaflet, purr, ggplot2, metricsgrphics for Allies worldwide bombarding ares (+damage, else...) during WW2.
+   + Data from Kaggle, Data Manipulation mostly with tidyverse,
+   + R Shiny App and Leaflet Cartography tweaked a little with JS, HTML and CSS,
+   + More available on my GitLab Account here[https://gitlab.com/JanMalik/R-Shiny-Apps].
 
-###
+### Disrimination:
+
+ * fgfd
+  + gfgdf
+ * fdgfd
+
 ###
 ###
 ###
