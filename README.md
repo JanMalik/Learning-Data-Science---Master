@@ -1,7 +1,5 @@
 # Learning Data Science - Master's Degree - 2017/2019
 
-*To be noted: on he 'Languages' bar distribution: when it's a Notebook, in R language for instance (format Rmd), here it will be counted as a HTML language.*
-
 ## What's in here?
 
 > Scripts and Notebooks:
