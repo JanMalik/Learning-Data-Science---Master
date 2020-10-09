@@ -1,6 +1,6 @@
 # Learning Data Science - Master's Degree - 2017/2019
 
-***To be noted: on he 'Languages' bar distribution: when it's a Notebook in R language (format Rmd), here it does count as a HTML language.
+***To be noted: on he 'Languages' bar distribution: when it's a Notebook in R language (format Rmd), here it does count as a HTML language. Same for png files?.
 
 ## What's in here?
 
