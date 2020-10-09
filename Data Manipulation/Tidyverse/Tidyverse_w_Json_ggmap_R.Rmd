@@ -1,0 +1,183 @@
+---
+title: "Use case of Tidyverse in R : Le Vélo STAR"
+subtitle: "using json data and Data Viz on maps"
+author: "Malik Jan"
+date: "12 February 2018"
+output: html_notebook
+---
+
+# Présentation des données
+
+**Le Vélo STAR** met à disposition des données. Elles sont accessibles soit au téléchargement en allant sur ce [site](https://data.explore.star.fr/) soit à travers une API. Nous allons voir rapidement comment récupérer les informations à l'aide de l'API.
+
+
+# Les packages utiles
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(ggmap)
+```
+
+# Les données topographiques des stations
+
+On commence par récupérer les données sur internet en utilisant l'API proposée.
+Il faut aller sur ce [site](https://data.explore.star.fr) et lire la documentation de l'API. Une fois les données importées dans  `data.frame` nommé `df_json`, il faut passer un peur de temps à comprendre comment il est structuré et se demander quelles données on souhaite conserver, comment les représenter pour
+construire un nouveau `data.frame` mieux adapté au traitement de l'information.
+
+Dans la première étape, on sélectionne et on renomme les informations utiles en formatant au passage l'adresse de façon lisible.
+
+```{r}
+df_json <- fromJSON("https://data.explore.star.fr/api/records/1.0/search/?dataset=vls-stations-topologie-td&pretty_print=true&rows=200", flatten = TRUE)
+df <- df_json$records %>%
+  mutate(adresse=stringr::str_c(fields.adressenumero, fields.adressevoie,fields.nomcommune)) %>%
+  select(id=fields.id,
+         id_proche1 = fields.idstationproche1,
+         id_proche2 = fields.idstationproche2,
+         id_proche3 = fields.idstationproche3,
+         nom=fields.nom,
+         adresse=adresse,
+         coords=fields.coordonnees
+         )
+```
+
+
+Dans la deuxième on traite correctement la variable `coords` en séparant en deux variables numériques `latitude` et `longitude`.
+```{r}
+df <- df$coords %>%
+  unlist() %>%
+  matrix(ncol=2, byrow=TRUE) %>%
+  data.frame() %>%
+  cbind(df) %>%
+  select(id, nom, adresse, latitude=X1, longitude=X2, id_proche1, id_proche2, id_proche3)
+```
+
+
+Et maintenant on jette un œil au tableau obtenu (après conversion en `tibble`) :
+```{r}
+topographie <- as_tibble(df)
+topographie
+```
+
+# Les données en temps réel sur les stations
+
+On peut également récupérer pour chaque station (en temps réel) le nombre de places disponibles et le nombre de vélos disponibles (il y a d'autres informations...)
+
+```{r}
+df_json <- fromJSON("https://data.explore.star.fr/api/records/1.0/search/?dataset=vls-stations-etat-tr&facet=nom&facet=etat&facet=nombreemplacementsactuels&facet=nombreemplacementsdisponibles&facet=nombrevelosdisponibles", flatten=TRUE)
+df <- df_json$records %>%
+  select(id = fields.idstation,
+         etat = fields.etat,
+         nb_emplacements = fields.nombreemplacementsactuels,
+         emplacements_disponibles = fields.nombreemplacementsdisponibles,
+         velos_disponibles = fields.nombrevelosdisponibles) %>%
+  mutate(en_fonctoinnement = (etat == "En fonctionnement")) %>%
+  select(-etat)
+```
+Là encore on regarde le tableau obtenu après conversion en `tibble`
+```{r}
+station_temps_reel <- tbl_df(df)
+head(station_temps_reel)
+```
+
+# Creer une table
+
+Création une table qui contient la liste des stations (avec l'identifiant et le nom), le nom de la station la plus proche et la distance à cette station:
+
+```{r}
+new_df <- topographie %>%
+  left_join(station_temps_reel, by = "id")
+
+tail(new_df)
+# When NA = station pas en fonctionnement!
+```
+
+Si station non fonctionnel (afin de créer un jolie graphique à la fin), supossons que le nb d'emplacemnt total, libre et le nb de vélos sont de 0.
+
+```{r}
+new_df <- new_df %>%
+  replace_na(list(en_fonctoinnement = "FALSE",
+                  nb_emplacements = 0,
+                  emplacements_disponibles = 0,
+                  velos_disponibles = 0))
+
+tail(new_df)
+```
+
+
+So on se trouve au point de coordonées $(48.1179151,-1.7028661)$. Quelle est la station la plus proche ? Est-elle en fonctionnement ? Combien de vélos sont disponibles ? Et pour les 5 les plus proches ?
+
+```{r}
+newPt <- c(48.1179151,-1.7028661)
+#- Euclidienne distance of Long Lat df columns with the new point
+dist_to_newPt <- c()
+for(i in 1:nrow(new_df)){
+  dist_to_newPt[i] = dist(rbind(new_df[i,4:5], newPt))
+}
+i
+#dist_to_newPt
+new_df$dist_to_newPt <- dist_to_newPt
+
+plus_proches <- new_df %>%
+  arrange(dist_to_newPt) %>%
+  select(id, nom, adresse, en_fonctoinnement, velos_disponibles,dist_to_newPt)
+
+(plus_proches_5 <- plus_proches[1:5,])
+```
+
+# Représentations pertinentes de ces données avec `ggmap`:
+
+Rennes: $(48.0833, --1.6833)$
+
+* Google API to Enable*
+
+## Rennes Static
+```{r}
+rennes=c(lat=48.0833, lon=-1.6833)
+rennes_map=get_map(location=rennes,zoom=13,maptype="satellite")
+ggmap(rennes_map)
+```
+
+```{r}
+rennes_map_1=get_map(location=rennes,zoom=13,maptype="satellite")
+ggmap(rennes_map_1)
+```
+
+
+```{r}
+rennes_map_2=get_map(location=rennes,zoom=13,maptype="watercolor", source="stamen")
+ggmap(rennes_map_2)
+```
+
+## Points
+
+```{r}
+ggmap(rennes_map_2)+
+  geom_point(data=new_df, 
+             aes(x=longitude,y=latitude,col=en_fonctoinnement))
+```
+
+```{r}
+ggmap(rennes_map_2)+
+  geom_point(data=new_df, 
+             aes(x=longitude,y=latitude), col="red", size=2)
+```
+
+
+```{r}
+ggmap(rennes_map_2)+
+  geom_point(data=new_df, 
+             aes(x=longitude,y=latitude,size=velos_disponibles), col="red")
+```
+
+```{r}
+ggmap(rennes_map_2)+
+  geom_point(data=new_df, 
+             aes(x=longitude,y=latitude,size=nb_emplacements), col="red")
+```
+
+```{r}
+ggmap(rennes_map_2)+
+  geom_point(data=new_df, 
+             aes(x=longitude,y=latitude,size=emplacements_disponibles), col="red")
+```

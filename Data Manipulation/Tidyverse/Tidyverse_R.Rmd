@@ -1,0 +1,182 @@
+---
+title: "Tidyverse in R - Completed Course"
+author: "Jan Malik"
+date: "15 Decembre 2017"
+output: html_notebook
+---
+
+## Initialisations
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(hflights)
+hflights <- as_tibble(hflights)
+hflights
+```
+
+
+## Améliorations du tibble
+
+On va améliorer le `tibble` en définissant certaines colonnes comme des facteurs et en modifiant le nom des facteurs pour que ce soit plus clair.
+
+Faisons-le tout d'abord pout la colonne `UniqueCarrier`.
+
+```{r}
+HF <- hflights %>%
+  mutate(UniqueCarrier=factor(UniqueCarrier)) %>% 
+  mutate(UniqueCarrier=fct_recode(UniqueCarrier,
+           "American"          = "AA"   ,
+           "Alaska"            = "AS"   ,
+           "JetBlue"           = "B6"   ,
+           "Continental"       = "CO"   , 
+           "Delta"             = "DL"   ,
+           "SkyWest"           = "OO"   ,
+           "United"            = "UA"   ,
+           "US_Airways"        = "US"   ,
+           "Southwest"         = "WN"   ,
+           "Atlantic_Southeast"= "EV"   ,
+           "Frontier"          = "F9"   ,
+           "AirTran"           = "FL"   ,
+           "American_Eagle"    = "MQ"   ,
+           "ExpressJet"        = "XE"   ,
+           "Mesa"              = "YV"))
+glimpse(HF)
+```
+
+Même chose pour la colonne `CancellationCode`.
+
+```{r}
+HF <- HF %>% 
+  mutate(CancellationCode = factor(CancellationCode)) %>% 
+  mutate(CancellationCode = fct_recode(CancellationCode,
+         "carrier"            = "A", 
+         "weather"            = "B", 
+         "national air system"= "C",
+         "security"           = "D", 
+         "not cancelled"      = ""))
+glimpse(HF)
+```
+
+Pour terminer proprement le travail on pourrait également décider de coder les mois de l'année comme des facteurs (faut-il alors modifier le nom des niveaux) et les jours de la semaine (même question que pour les mois).
+
+## Les questions
+
+Sélectionner les variables de `Origin` à `Cancelled`.
+
+```{r}
+HF %>% 
+  select(Origin:Cancelled)
+```
+
+Sélectionner les variables `DepTime`, `ArrTime`, `ActualElapsedTime`, `AirTime`, `ArrDelay` et `DepDelay`. On peut utiliser les *helper functions*.
+
+```{r}
+HF %>% 
+  select(ends_with("Time"), ends_with("Delay"))
+```
+
+Pour calculer le temps passé à rouler, créer une variable `ActualGroundTime` en fonction des variables `ActualElapsedTime` et `AirTime`. Faire la même chose avec la variable `GroundTime` en fonction de `TaxiIn` et `TaxiOut`.
+
+```{r}
+HF %>% 
+  mutate(
+    ActualGroundTime = ActualElapsedTime - AirTime,
+    GroundTime = TaxiIn + TaxiOut,
+    idem = near(ActualGroundTime, GroundTime)
+  ) %>% 
+  summarise(idem = all(idem, na.rm = T))
+```
+
+
+Créer un nouvelle variable `AverageSpeed` qui contient la vitesse moyenne.
+
+```{r}
+HF %>% 
+  mutate(
+    AverageSpeed = Distance / AirTime
+  )
+```
+
+
+Filtrer les vols à destination de JFK.
+
+```{r}
+HF %>% 
+  filter(Dest == "JFK")
+```
+
+Filtrer les vols partis avant 9h00 et arrivés après 18h00.
+
+```{r}
+HF %>% 
+  filter(DepTime<0900 & ArrTime > 1800)
+```
+
+
+Sélectionner les vols qui ont été annulés après avoir été retardés (on notera `DTC`le nouveau `tibble`ainsi créé).
+
+```{r}
+DTC <- HF %>% 
+  filter(Diverted == 1 & DepDelay > 0)
+DTC
+```
+
+
+Réarranger `dtc` pour l'organiser par `UniqueCarrier` puis `DepDelay`.
+
+```{r}
+DTC <- DTC %>% 
+  arrange(UniqueCarrier, DepDelay)
+DTC
+```
+
+
+Supprimer les vols (de `HF` pour lesquels la variable `ArrDelay`n'est pas renseignée puis créer un résumé qui contient les variables suivantes :
+    + `earliest` : la plus faible valeur de `ArrDelay ;
+    + `average` : la moyenne de la même varible ;
+    + `latest` : la plus grande valeur (toujours la même variable) ;
+    + `sd` : l'écart-type de cette même variable.
+
+```{r}
+HF %>% 
+  filter(is.finite(ArrDelay)) %>% 
+  summarise(
+    earliest = min(ArrDelay),
+    average = mean(ArrDelay),
+    latest = max(ArrDelay),
+    sd = sd(ArrDelay)
+  )
+```
+
+
+Faire un résumé de `HF`qui contient :
+    + `n` : le nombre total de vols ;
+    + `n_dest`: le nombre de destinations différentes ;
+    + `n_carrier` : le nombre de transporteurs.
+
+```{r}
+HF %>% 
+  summarise(
+    n = n(),
+    n_dest = n_distinct(Dest),
+    n_carrier = n_distinct(UniqueCarrier)
+  )
+```
+
+Faire un résumé des vols du transporteur **American** qui contient :
+    + le nombre de vols ;
+    + le nombre de vols annulés ;
+    + la moyenne de la variable `ArrDelay` (attention aux `NA`).
+
+```{r}
+HF %>% 
+  filter(UniqueCarrier == "American") %>% 
+  summarise(
+    n_flights = n(),
+    n_cancelled = sum(Cancelled),
+    average_arr_delay_minutes = mean(ArrDelay, na.rm=TRUE) * 60
+  )
+```
