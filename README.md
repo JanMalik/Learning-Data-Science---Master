@@ -42,14 +42,6 @@ See more on my GitLab Account here [https://gitlab.com/JanMalik/R-Shiny-Apps].
   
 ### Big Data tools
 
-  * PySpark:
-    + Scripts of queries.
-  * PyMongo:
-    + Script of queries.
-  * Neo4j:
-    + Scripts of queries.
-  * MongoDB:
-    + Scripts of queries.
   * 'Beer ABV Project':
     + Scripts of Data Manipulation, DataViz in Python:
       + NumPy,
@@ -62,7 +54,15 @@ See more on my GitLab Account here [https://gitlab.com/JanMalik/R-Shiny-Apps].
       + mpl_toolkits.mplot3d,
       + PyMongo,
       + PySpark.
-    + Short project report in french (pdf).
+     + Short project report in french (pdf).
+  * MongoDB:
+     + Scripts of queries.
+  * Neo4j:
+     + Scripts of queries.
+  * PyMongo:
+     + Script of queries.
+  * PySpark:
+     + Scripts of queries.
     
 ### Classification
 
