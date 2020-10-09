@@ -1,0 +1,112 @@
+---
+title: "Un essai de sunbuRst"
+author: "Jan Malik"
+date: "19 April 2018"
+output:
+  html_notebook: default
+---
+  
+# Initialisations
+  
+```{r, message=FALSE, warning=FALSE}
+library(data.table)
+library(ggvis)
+```
+
+# Fonction principale
+
+```{r}
+to_sunburst <- function(DT, by=NULL, count=NULL, color_palette=rainbow){
+  #
+  # Noms variables standards
+  #
+  DT <- copy(DT)
+  old_names <- c(by,count)
+  new_names <- c(paste0("X", 1:length(by)), "count")
+  setnames(DT, old_names, new_names)
+  
+  #
+  # initialisation des couleurs
+  #
+  palette <- list()
+  modalites <- DT[, .N, by=c("X1")][,X1]
+  colors_modalites <- rainbow(length(modalites))
+  for(i in seq_along(modalites)){
+    start_color <- colorRampPalette(c("#FFFFFF", colors_modalites[i]))(10)[3]
+    stop_color <- colorRampPalette(c("#000000", colors_modalites[i]))(10)[3]
+    palette[[modalites[i]]] <- colorRampPalette(c(start_color, stop_color))
+  }
+  
+  #
+  # cercles
+  #
+  circles <- list()
+  for(k in 1:(length(by))){
+    byk  <-  c(paste0("X", 1:k))
+    circle <- DT[, .(count=sum(count)), by=byk]
+    circle[
+      ,prop := count/sum(count)
+      ][
+        , `:=`(
+          inner_radius = k*50,
+          outer_radius = (k+1)*50,
+          start_angle = 2*pi*shift(cumsum(prop), n=1L, fill=0, type="lag"),
+          end_angle = 2*pi*cumsum(prop),
+          percent = floor(100*prop)
+        )
+        ][
+          , couleur := palette[[X1]](.N)
+          , by=c("X1")
+          ][
+            , c(byk, "round", "prop") := NULL
+            ]
+    circles[[k]] <- circle
+  }
+  
+  #
+  # rbind and return
+  #
+  rbindlist(circles)
+}
+```
+
+# Données
+
+```{r}
+DT.example <- data.table(
+  X1 = c(rep("animal", 12), rep("vegetal", 9)),
+  X2 = c(rep("poisson", 4), rep("mamifere", 8), rep("arbre", 6), rep("fleur", 3)),
+  X3 = c("anchois", "morue", "saumon", "thon", "chien", "chat", "cheval", "vache", "chèvre", "mouton", "souris", "homme", "platane", "micocoulier", "liquidambar", "chêne", "hêtre", "noyer", "rose", "marguerite", "primevère"),
+  count = 1:21#,
+  #nouvelle_variable = sample(x = c("a", "b", "c"), size = 21, replace = TRUE)
+)
+
+DT.example
+```
+
+# Essais
+
+```{r}
+DT.sunburst <- to_sunburst(DT.example, by=c(paste0("X", 1:3)), count="count")
+DT.sunburst
+```
+
+
+# ggvis
+
+```{r}
+DT.sunburst %>%
+  ggvis(x= 0,y= 0) %>%
+  layer_arcs(innerRadius :=~ inner_radius,
+             outerRadius :=~ outer_radius,
+             startAngle =~ start_angle,
+             endAngle =~ end_angle,
+             stroke := "white",
+             strokeWidth := 2,
+             fill :=~ couleur,
+             fill.hover := "#AAFFAA") %>%
+  scale_numeric("x",domain=c(-10,10)) %>%
+  scale_numeric("y",domain=c(-10,10)) %>% 
+  hide_axis("x") %>% 
+  hide_axis("y") 
+```

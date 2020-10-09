@@ -1,0 +1,275 @@
+---
+title: "Introduction to data.table - completed course"
+author: "Jan Malik"
+date: "06 April 2018"
+output: html_notebook
+---
+
+# Avant de commencer
+
+Le package `data.table` permet de manipuler de façon très efficace des `data.frame` pouvant faire plusieurs centaines de gigooctets en RAM. Pour cela, à l'instar de ce que propose `dplyr` et sa classe `tibble`, une nouvelle classe est proposée : les `data.table`.
+
+Avant de commencer, il faut charger le package après, le cac échéant, l'avoir installé.
+```{r}
+library(data.table)
+```
+
+Pour créer un `data.table` on peut soit utiliser la fonction `fread()` qu'on a déjà étudiée brièvement soit utiliser l'une des deux fonctions `data.table()` (qui permet de créer un `data.table`directement), soit la fonction `as.data.table()` qui permet de convertir un objet existant en `data.table` (à condition qu'une méthode soit proposée par l'objet en question).
+
+Par exemple
+
+```{r}
+df <- data.frame(x=1:8, y=LETTERS[1:8])
+DT1 <- as.data.table(df)
+DT2 <- data.table(x=1:8, y=LETTERS[1:8])
+DT1
+DT2
+```
+
+# Principes généraux
+
+Le package `data.table` offre une syntaxe de manipulation des données très puissante. Là où `dplyr` vise la généralité (manipulation de `tibble` en local ou de bases des données SQL distantes) et la simplicité, `data.table` vise la performance avant tout et la souplesse de la syntaxe.
+
+Pour donner des exemples nous allons créer un `data.frame` qui comprend deux variables quantitatives et une variable qualitative.
+```{r}
+x <-rnorm(20)
+y <- 2*x+1+0.01*rnorm(20)
+DT <- data.table(
+  x = x,
+  y = y,
+  z = rep(c("a", "b"), 10)
+)
+DT
+```
+
+La syntaxe générale de manipulation d'un `data.table` est la suivante :
+```{r, eval=FALSE}
+DT[i, j, by]
+```
+où l'on peut dire (pour simplifier un peu) que :
+
+* `i` permet la sélection de lignes ;
+
+* `j` permet la sélection de colonnes ;
+
+* `by` permet de regrouper suivant certaines variables les opérations effectuées.
+
+On va voir en réalité, et progressivement, que les opérations possibles sont extêmement riches.
+
+## Informations
+
+On peut connaître la dimension d'un `data.table` à l'aide de la commande `dim()` et le nom des variables à l'aide de la commande `names()` :
+```{r}
+names(DT)
+```
+
+
+## Manipulation des lignes
+
+On sélectionne des lignes de la façon suivantes :
+```{r}
+DT[2:3]
+```
+ou pour être plus proche de la syntaxe des `data.frame` avec la syntaxe équivanlente :
+```{r}
+DT[2:3,]
+```
+
+On peut passer n'importe que vecteur de positions :
+```{r}
+DT[c(4,7)]
+```
+
+La dernière ligne est accessible grâce à la variable `.N` (définie dans l'environement du `data.table` `DT` et qui comprend le nombre de lignes de `DT` :
+```{r}
+DT[.N]
+```
+
+On peut même créer un `data.table` qui répète un certain nombre de fois la première ligne (par exemple) :
+```{r}
+DT[rep(1,7)]
+```
+
+## Sélection de colonnes
+
+C'est l'opération la plus simple permise par l'argument `j` (qui se révèlera bien plus puissant). Il suffit de passer une liste qui contient les noms des colonnes que l'on souhaite sélectionner.
+
+```{r}
+DT[, list(x, y)]
+```
+
+On remarque la virgule qui indique que l'argument `i` est absent. On peut sélectionner une seule variable :
+```{r}
+DT[,list(x)]
+```
+On remarque que le résultat n'est pas le même si l'on passe seulement `x` au lieu de `list(x)`. On obtient alors un vecteur.
+```{r}
+DT[,x]
+```
+
+La remarque la plus importante est de remarquer que le nom des colonnes est passé directement et pas sous la forme de chaîne de caractère. En réalité dans l'environement du `data.table` de nouvelles variables sont créées qui correspondent aux noms des colonnes. On verra l'utilité à la section suivante.
+
+Pour simplifier l'écriture, vu l'utilisation fréquente des listes avec le package `data.table`, un raccourci existe à la plce de `list()` : c'est `.()`. On peut donc écrire :
+```{r}
+DT[,.(x, z)]
+```
+
+Enfin, notons que pour avoir une compatibilité assez bonne avec les `data.frame`usuels, on peut aussi passer un vecteur de caractères :
+```{r}
+DT[,c("x", "y")]
+```
+
+## Calculs dans les colonnes
+
+Vu que dans l'environement du `data.table`, les colonnes sont des variables, on peut faire du calcul :
+```{r}
+DT[,.(x**2)]
+```
+Si l'on préfère choisir un nom plus parlant c'est simple :
+```{r}
+DT[,.(x2=x**2, y3=y**3)]
+```
+
+On peut utiliser des fonctions d'agrégat (revoir dans le cours de `dplyr`) pour obtenir ici aussi des résumés de `DT`. Par exemple :
+```{r}
+DT[,.(mean_x=mean(x), mean_y=mean(y))]
+```
+
+Le recyclage est utilisé si besoin :
+```{r}
+DT[,.(x=x, sum_y = sum(y))]
+```
+
+## La puissance de `j`
+
+L'argument `j` est en réalité extrêùeùent puissant car on peut passer des expressions qui sont évaluer dans l'environement du `data.table`.
+On peut par exemple faire :
+```{r}
+DT[,{
+  print(mean(x))
+  plot(x,y)
+}]
+```
+Ici on a affiché à l'écran la valeur de `mean(x)` puis on a fait le dessin souhaité et enfin on a obtenu le `data.table` égal à `NULL` à cause de la valeur de retour de la fonction `plot()` qui est `NULL`. Tout le bloc délimité par `{}`a été évalué dans l'environement de `DT` où les variables `x`, `y` et  `z` sont définies.
+
+Attention :
+```{r}
+DT[,{
+  hist(x)
+}]
+DT
+```
+
+```{r}
+DT[,{
+  hist(x)
+  NULL
+}]
+DT
+```
+
+## Les groupes
+
+Nous avons vu les deux premiers arguments de la syntaxe des `data.table`. Reste à comprendre le fonctionnement de `by`.
+
+Pour donner une idée, on peut dire que `DT[i, j, by]` peut se lire *Sur les données `DT`, filtrer les lignes `i` puis calculer `j` sur les groupes `by`*. Par exemple pour calculer les moyennes de `x` et de `y` en fonction de la valeur de la variable `z` (qui peut valoir `"a"` ou `"b"`) on code :
+```{r}
+DT[,.(mean_x = mean(x), mean_y= mean(y)), by=z]
+```
+
+Si l'on souhaite calculer la moyenne de `y` en différentiant les `x>0` des `x<0` on peut coder :
+```{r}
+DT[,.(mean_y = mean(y)), by = x>0]
+```
+ On peut améliorer la lisibilité de la sortie en renommant la variable `x`.
+ 
+```{r}
+DT[,.(mean_y = mean(y)), by = .(x_positif = x>0)]
+```
+Si l'on souhaite savoir combien de lignes correpondent à des valeurs positives de `x` c'est très simple on ajoute une colonne :
+```{r}
+DT[,.(mean_y = mean(y), .N), by = .(x_positif = x>0)]
+```
+Ici la variable nommée `N` a été crée mais on peut toujours changer son nom.
+
+## Une chose amusante
+
+Sans commentaire
+
+```{r}
+DT[,plot(x, y)
+   ,by=.(z)]
+```
+
+
+# Notions plus avancées
+
+## Le chaînage
+
+Vu que la manipulation d'un `data.table` via la syntaxe `DT[i, j, by]`renvoie un `data.table`^[On rappelle l'exception `DT[,x]` qui renvoie un vecteur], on peut facilement chaîner les opérations :
+```{r}
+DT[,.(cs_y = cumsum(y)), by=.(x_positif=x>0, z)][
+  ,.(mean_y=mean(y)), by=z]
+```
+
+Faire les opérations sans chaînage pour bien comprendre.
+
+
+## Les variables `.SD` et `.SDcols`
+
+Ces variables sont définies dans l'environement des `data.table` lorsque l'argument `by` est utilisé. La variable `.SD` est en lien avec le sous-ensemble des données qui correspond à chaque valeur unique de l'argument `by`. Euh ??? par exemple :
+```{r}
+DT[, lapply(.SD, mean), by=z]
+```
+On rapelle (sinon le vérifier) que `lapply` renvoie une liste ! C'est compatible avec la syntaxe vue ci-dessus.
+
+On peut spécifier quelles colonnes de `DT` feront partie de la variable *interne* `.SD`. Par exemple :
+```{r}
+DT[, lapply(.SD, mean), by=z, .SDcols=c("x")]
+```
+
+## L'opérateur `:=` dans l'argument `j`
+
+Cet élément syntaxique permet la modification **par référence** du `data.table`. C'est un élément clé de `data.table` lorsqu'on travaille sur de très grosses bases de données. On n'est pas obligé de faire une copie en mémoire de la table sur laquelle on travaille à chaque manipulation (comme on le fait systématiquement avec `dplyr`). Puisque `data.table` est conçu pour travailler sur des bases de données énormes (plusiuers centaines de Go en RAM) c'est un atout décisif.
+
+Voici comment créer, modifier ou supprimer des colonnes :
+```{r}
+DT[,c("x", "y") := .(x**2, y**3)]
+DT
+```
+Lorsqu'il n'y a qu'une seule variable il existe un *sucre* syntaxique et l'on peut écrire
+```{r}
+DT[, t := rep(NA, .N)]
+DT
+```
+au lieu de 
+```{r}
+DT[,c("t") := .(rep(0, .N))]
+DT
+```
+Si l'on souhaite supprimer la colonne `t` nouvellement créée c'est très simple :
+```{r}
+DT[,t := NULL]
+DT
+```
+Enfin il existe une forme fonctionnelle qui permet souvent une meilleur lisibilité mais qui est moins pratique dans un contexte de programmation :
+```{r}
+DT[, `:=`(
+  x = rnorm(20),
+  y = rnorm(20)
+)]
+DT
+```
+
+## Modifer le nom et l'ordre des colonnes
+
+Il existe deux fonctions pour effectuer ces opérations (toujours par référence) : `setnames()` et `setcolorder()`. Voici deux exemples :
+```{r}
+setnames(DT, toupper(colnames(DT)))
+DT
+```
+```{r}
+setcolorder(DT, c("Z", "Y", "X"))
+DT
+```
+
