@@ -10,7 +10,7 @@
  
 > Interactive Web Application (R Shiny):
 
-See more on my GitLab Account here[https://gitlab.com/JanMalik/R-Shiny-Apps].
+See more on my GitLab Account here [https://gitlab.com/JanMalik/R-Shiny-Apps].
 
 > Programming Languages:
 
