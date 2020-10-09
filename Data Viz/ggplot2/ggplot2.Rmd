@@ -1,0 +1,654 @@
+---
+title: "R: ggplot2 - Completed Course"
+author: "Jan Malik"
+date: "24 February 2018"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    number_sections: yes
+    theme: united
+    highlight: tango
+---
+
+```{r}
+#install.packages("tidyverse") #if needed
+```
+
+> About ggplot2
+
+* ggplot2 is a plotting system for R based on the grammar of graphics (as **dplyr** to manipulate data).
+* We can find documentation [here](http://ggplot2.org).
+* We consider a subsample of the diamond dataset from the package **ggplot2**:
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+set.seed(1234)
+diamonds2 <- diamonds[sample(nrow(diamonds),5000),] 
+summary(diamonds2)
+#help(diamonds)
+```
+
+Given a dataset, a ggplot graph is defined from many **layers**. We have to specify:
+
+* the data
+* the variables we want to plot
+* the type of representation (scatterplot, boxplot...).
+
+Ggplot graphs are defined from these layers. We indicate:
+
+* the data with **ggplot**
+* the variables with **aes** (aesthetics)
+* the type of representation with **geom_**
+
+The scatterplot **carat vs price** is obtained with the **plot** function with
+```{r}
+plot(price~carat,data=diamonds2)
+```
+
+With **ggplot**, we use
+```{r}
+#ggplot(diamonds2) #nothing
+#ggplot(diamonds2)+aes(x=carat,y=price) #aesthetic with nothing
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_point() #good
+```
+
+
+# Different 'geom_' types
+
+* Draw the histogram of **carat** (use **geom_histogram**)
+* Draw the histogram of **carat** with 10 bins (**help(geom_histogram)**)
+* Draw the barplot for the variable **cut** (use **geom_bar**)
+
+```{r}
+ggplot(diamonds2)+aes(x=carat)+geom_histogram() #using 'bins=30' by default
+#help(geom_histogram)
+ggplot(diamonds2)+aes(x=carat)+geom_histogram(bins=10)
+ggplot(diamonds2)+aes(x=cut)+geom_bar()
+```
+
+
+## Ggplot grammar
+
+In ggplot, the syntax is defined from independent elements. These elements define the **grammar** of **ggplot**. Main elements of the grammar include:
+
+* **Data (ggplot)**: the dataset, it should be a dataframe
+* **Aesthetics (aes)**: to describe the way that variables in the data are mapped. All the variables used in the graph should be precise in **aes**
+* **Geometrics (geom_...)**: to control the type of plot
+* **Statistics (stat_...)**: to describe transformation of the data
+* **Scales (scale_...)**: to control the mapping (configuration) from data to aesthetic attributes (change of colors...)
+
+All these elements are combined with a **+**.
+
+### `Data and aesthetics`
+
+These two elements specify the data and the variables we want to represent.
+
+**aes** also uses arguments such as **color**, **size**, **fill**. We use these arguments as soon as a color or a size is defined from a **variable of the dataset**.
+
+### `Geometrics`
+
+To obtain the graph, we need to precise the type of representation. We use **geometrics** to do that. For a scatter plot, we use **geom_point**:
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price,color=cut)+geom_point()
+```
+
+Observe that **ggplot** adds the lengend automatically. Exemples of **geometrics** are described here:
+
+Geom   | Description| Aesthetics 
+-------|------------|-----------
+geom_point()| Scatter plot | x, y, shape, fill 
+geom_line()|  Line (ordered according to x) | x, y, linetype
+geom_abline()|  Line | slope, intercept 
+geom_path() | Line (ordered according to the index) | x, y, linetype 
+geom_text() | Text | x, y, label, hjust, vjust 
+geom_rect() | Rectangle | xmin, xmax, ymin, ymax, fill, linetype
+geom_polygon() | Polygone | x, y, fill, linetype
+geom_segment() | Segment | x, y, fill, linetype 
+geom_bar() | Barplot | x, fill, linetype, weight 
+geom_histogram() | Histogram | x, fill, linetype, weight 
+geom_boxplot() | Boxplots | x, y, fill, weight 
+geom_density() | Density | x, y, fill, linetype 
+geom_contour() | Contour lines | x, y, fill, linetype 
+geom_smooth() | Smoothers (linear or non linear) | x, y, fill, linetype 
+All | | color, size, group
+
+
+> Other example
+
+* Drawing the barplot of **cut** with default blue bars.
+* Dranwing the barplot of **cut** with a Hex color code of your choice.
+* Drawing the barplot of **cut** with one color for each modality of cut.
+
+
+```{r}
+ggplot(diamonds2)+aes(x=cut,fill=2)+geom_bar()
+ggplot(diamonds2)+aes(x=cut)+geom_bar(fill="#00abff")
+ggplot(diamonds2)+aes(x=cut,fill=cut)+geom_bar()
+```
+
+
+### `Statistics` 
+
+Many graphs need to transform the data to make the representation (barplot, histogram). Simple transformations can be obtained quickly. For instance we can draw the sine function/wave with:
+
+```{r}
+D <- data.frame(X=seq(-2*pi,2*pi,by=0.01))
+ggplot(D)+aes(x=X,y=sin(X))+geom_line()
+```
+
+The sine transformation is precised in **aes**. For more complex transformations, we have to used **statistics**. A **stat** function takes a dataset as input and returns a dataset as output, and so a stat can add new variables to the original dataset. It is possible to map aesthetics to these new variables. For example, **stat_bin**, the statistic used to make histograms, produces the following variables:
+
+* `count`, the number of observations in each bin
+* `density`, the density of observations in each bin (percentage of total / bar
+width)
+* `x`, the center of the bin
+
+By default *geom_histogram* represents on the $y$-axis the number of observations in each bin (the outuput **count**). 
+
+```{r}
+ggplot(diamonds)+aes(x=price)+geom_histogram(bins=40)
+```
+
+For the density, we use
+```{r}
+ggplot(diamonds)+aes(x=price,y=..density..)+geom_histogram(bins=40)
+```
+
+## Add on methods
+
+*ggplot* proposes another way to make the representations: we can use *stat_* instead of *geom_*. Formally, each stat function has a geom and each geom has a stat. For instance, 
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_smooth(method="loess")
+ggplot(diamonds2)+aes(x=carat,y=price)+stat_smooth(method="loess")
+```
+lead to the same graph. We can change the type of representation in the **stat_** with the argument **geom**:
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price)+stat_smooth(method="loess",geom="point")
+```
+
+Here are some examples of **stat functions**
+
+ Stat   |  Description |  Parameters
+--------|------------------|----------------
+stat_identity() | No transformation |  
+stat_bin() | Count | binwidth, origin 
+stat_density() | Density | adjust, kernel 
+stat_smooth() | Smoother | method, se 
+stat_boxplot() | Boxplot | coef 
+
+*stat* and *geom* are not always easy to combine. For beginners, we recommand to only use *geom*.
+
+# Managing colors and facets
+
+We consider a color variable $X$ with probability distribution
+$$P(X=red)=0.3,\ P(X=blue)=0.2,\ P(X=green)=0.4,\ P(X=black)=0.1$$
+Drawing the barplot of this distribution:
+
+```{r}
+data<- data.frame(color=c("red","blue","green","black"),freq=c(0.3,0.2,0.4,0.1))
+ggplot(data)+aes(x=color,y=freq,fill=color)+geom_bar(stat="identity")
+```
+
+
+## `Scales`
+
+Scales control the mapping from data to aesthetic attributes (change of colors, sizes...). We generally use this element at the end of the process to refine the graph. Scales are defined as follows:
+
+* begin with **scale_**
+* add the aesthetics we want to modify (**color**, **fill**, **x_**)
+* end with the name of the scale (**manual**, **identity**...)
+
+For instance,
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price,color=cut)+geom_point()+
+scale_color_manual(values=c("Fair"="black",
+                            "Good"="yellow",
+                            "Very Good"="blue",
+                            "Premium"="red",
+                            "Ideal"="green"))
+```
+
+Here are the main scales:
+
+aes | Discrete | Continuous
+----|-----------|----------
+Couleur (color et fill) | brewer | gradient 
+  -  | grey | gradient2 
+  -  | hue | gradientn 
+ - | identity | 
+ - | manual |
+Position (x et y) | discrete | continous 
+- | | date 
+Forme | shape | 
+- | identity | 
+- | manual | 
+Taille  | identity | size 
+- | manual | 
+
+## Some examples:
+
+### `Color of a barplot`
+
+```{r}
+p1 <- ggplot(diamonds2)+aes(x=cut)+geom_bar(aes(fill=cut))
+p1
+```
+
+
+We change colors by using the palette **Purples** :
+
+```{r}
+p1+scale_fill_brewer(palette="Purples")
+RColorBrewer::display.brewer.all()
+```
+
+### `Coord_flip()`
+
+```{r}
+p1 + coord_flip()
+```
+
+
+### `Gradient color for a scatter plot` :
+```{r}
+p2 <- ggplot(diamonds2)+aes(x=carat,y=price)+geom_point(aes(color=depth))
+p2
+```
+
+We change the gradient color 
+```{r}
+p2+scale_color_gradient(low="red",high="yellow")
+```
+
+###  `Change on the axis`
+```{r}
+p2+scale_x_continuous(breaks=seq(0.5,3,by=0.5))+scale_y_continuous(name="Prix")+scale_color_gradient("Profondeur")
+```
+
+
+## `Group and facets`
+
+**ggplot** allows to make representations for subgroup of individuals. We can proceed in two ways:
+
+* to represent subgroup on the same graph, we use *group* in **aes**
+* to represent subgroup on the different graphs, we use **facets**
+
+We can represent (on the same graph) the smoother **price vs carat** for each modality of *cut* with 
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price,group=cut,color=cut)+geom_smooth(method="loess")
+```
+
+To obtain the representation on many graphs, we use
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_smooth(method="loess")+facet_wrap(~cut)
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_smooth(method="loess")+facet_wrap(~cut,nrow=1)
+```
+
+*facet_grid* and *facet_wrap* do the same job but split the screen in different ways:
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_point()+geom_smooth(method="lm")+facet_grid(color~cut)
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_point()+geom_smooth(method="lm")+facet_wrap(color~cut)
+```
+
+
+# Furthermore
+
+
+## Syntax flexibility
+
+
+Syntax for **ggplot** is defined according to the following scheme:
+
+`ggplot()+aes()+geom_()+scale_()`
+
+It is really flexible: for instance **aes** could also be specified in **ggplot** or in **geom_**
+
+```{r}
+ggplot(diamonds2)+aes(x=carat,y=price)+geom_point()
+ggplot(diamonds2,aes(x=carat,y=price))+geom_point()
+ggplot(diamonds2)+geom_point(aes(x=carat,y=price))
+```
+
+
+## Multiple geom_ on the same graph
+
+
+Drawing the sine function on $[-2\pi,2\pi]$, we can dd the lines *(in blue)* of equation $y=1$ and $y=-1$.
+We can also use *size=2* on those lines.
+
+```{r}
+X <- seq(-2*pi,2*pi,by=0.01)
+Y <- sin(X)
+sinus <- data.frame(X=X,Y=Y)
+g <- ggplot(sinus,aes(X,Y))+geom_line()
+#g+geom_hline(yintercept=1)+geom_hline(yintercept=-1)
+#g+geom_hline(yintercept=1,aes(colour='#990000'))+geom_hline(yintercept=-1)
+g+geom_hline(yintercept=1,color="blue")+geom_hline(yintercept=-1,color="blue")
+```
+
+## Use multiple datasets
+
+We can also built a graph with many datasets:
+```{r}
+X <- seq(-2*pi,2*pi,by=0.001)
+Y1 <- cos(X)
+Y2 <- sin(X)
+donnees1 <- data.frame(X,Y1)
+donnees2 <- data.frame(X,Y2)
+ggplot(donnees1)+geom_line(aes(x=X,y=Y1))+geom_line(data=donnees2,aes(x=X,y=Y2),color="red")
+```
+
+Or use the *gather()* function 
+
+```{r}
+X <- seq(-2*pi,2*pi,by=0.001)
+Y1 <- cos(X)
+Y2 <- sin(X)
+data <- data.frame(X,cos=Y1,sin=Y2)
+new_data <- gather(data=data,key="fonction",values=c(cos,sin))
+#new_data <- gather(data=data,key="func",values="value",-X)   also works!
+ggplot(new_data)+aes(x=X,y=value,colour=fonction)+geom_line()
+```
+
+## Adapt your graph facets
+
+Drawing those two functions on two different graphs (use **facet_wrap**).
+
+```{r}
+ggplot(new_data)+aes(x=X,y=value,colour=fonction)+geom_line()+facet_wrap(~fonction)
+#ggplot(new_data)+aes(x=X,y=value)+geom_line()+facet_wrap(~fonction)
+```
+
+We can also do the same with the function **grid.arrange** from the package **gridExtra**.
+
+```{r}
+#install.packages("gridExtra") #if needed
+library(gridExtra)
+```
+
+```{r}
+X <- seq(-2*pi,2*pi,by=0.001)
+Y1 <- cos(X)
+Y2 <- sin(X)
+data1 <- data.frame(X,cos=Y1)
+data2 <- data.frame(X,sin=Y2)
+g1 <- ggplot(data1)+geom_line(aes(x=X,y=cos))
+g2 <- ggplot(data2)+geom_line(aes(x=X,y=sin))
+grid.arrange(g1,g2,ncol=2)
+```
+
+## Other options
+
+Many other functions are proposed by **ggplot**:
+
+* **ggtitle** to add a title
+* **ggsave** ta save a graph
+* **theme_** to change the theme of the graph
+
+```{r}
+p <- ggplot(diamonds2)+aes(x=carat,y=price,color=cut)+geom_point()
+p
+p+theme_bw()
+p+theme_classic()
+p+theme_grey()
+p+theme_bw()
+p+theme_bw()+theme(legend.position="bottom")
+```
+
+# Go deeper in geom_ parameters
+
+We consider the dataset **mtcars**
+
+```{r}
+data(mtcars)
+summary(mtcars)
+#help(mtcars)
+```
+
+## Histogram
+
+### Bins
+
+Drawing the histogram of **mpg** (using many numbers of bins):
+
+```{r}
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=10)
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=14)
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=18)
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=22)
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=26)
+ggplot(mtcars)+aes(x=mpg)+geom_histogram(bins=30)
+```
+
+
+### Density
+
+Represent the density on the $y$-axis.
+
+```{r}
+ggplot(mtcars)+aes(x=mpg,y=..density..)+geom_histogram(bins=14)
+```
+
+## Barplot
+
+Drawing the barplot of **cyl**:
+
+### Quantitative
+
+By default *stat="count"*: 
+```{r}
+ggplot(mtcars)+aes(x=cyl,fill=cyl)+geom_bar()
+```
+
+### 1 factor
+
+```{r}
+mtcars$f_am <- as.factor(mtcars$am)
+
+ggplot(mtcars)+aes(x=f_am,y=cyl, fill=f_am)+geom_bar(stat="identity")
+```
+
+### 2 factors
+
+```{r}
+mtcars$f_gear <- as.factor(mtcars$gear)
+ggplot(data=mtcars) +
+  aes(x=f_am, y=cyl, fill=f_gear) +
+  geom_bar(stat="identity", position=position_dodge())
+```
+
+### Stacked barplot
+
+```{r}
+ggplot(data=mtcars) +
+  aes(x=f_am, y=cyl, fill=f_gear) +
+  geom_bar(stat="identity") +
+  scale_fill_brewer(palette="Paired")+
+  theme_minimal()
+```
+
+
+## Scatterplot
+
+### Facets
+
+Drawing the scatter plot **disp vs mpg** for each value of **cyl** (one color for each value of **cyl**).
+
+```{r}
+ggplot(mtcars)+aes(x=mpg,y=disp,color=cyl)+geom_point()+facet_wrap(~cyl)
+```
+
+### Smooth
+
+Add the linear smoother on each graph.
+
+```{r}
+g1 <- ggplot(mtcars)+aes(x=mpg,y=disp,color=cyl)+geom_point()+geom_smooth(method="loess")+facet_wrap(~cyl)
+g1
+```
+
+
+
+## Segment
+
+Here's an other example:
+
+Let's simulate a sample $(x_i,y_i),i=1,\dots,100$ according to the linear model
+$$Y_i=3+X_i+\varepsilon_i$$
+where $X_i$ are i.i.d. and uniform on $[0,1]$ and $\varepsilon_i$ are gaussian $N(0,0.2^2)$ (use **runif** and **rnorm**).
+
+```{r}
+set.seed(123)
+X <- runif(100,0,1)
+epsilon <- rnorm(100,0,0.2)
+#help(rnorm)
+Y <- 3+X+epsilon
+data <- data.frame(X,Y)
+```
+
+
+Drawing the scatter plot **y vs x** and add the linear smoother.
+
+```{r}
+ggplot(data)+aes(x=X,y=Y)+geom_point()+geom_smooth(method="lm")
+```
+
+
+Drawing the residuals: add a vertical line from each point to the linear smoother (use **geom_segment**).
+
+```{r}
+regression <- lm(Y~X,data=data)
+regression
+residus <- residuals(regression)
+data1 <- cbind(data,residus)
+Yhat <- data1$Y-data1$residus
+new_data <- cbind.data.frame(data1,Yhat)
+# for (i in (1:100)){
+#   geom_segment(aes(x=new_data[i,][1],y=new_data[i,][2],xend=new_data[i,][1],yend=new_data[i,][4]))
+# }
+
+# ggplot(data)+aes(x=X,y=Y)+geom_point()+geom_smooth(method="lm")+(for (i in (1:100)){geom_segment(aes(x=new_data[i,][1],y=new_data[i,][2],xend=new_data[i,][1],yend=new_data[i,][4]))
+# })
+
+ggplot(data)+aes(x=X,y=Y)+geom_point()+geom_smooth(method="lm")+geom_segment(aes(x=new_data$X,y=new_data$Yhat,xend=new_data$X,yend=new_data$Y))
+```
+
+# Use case : ROC curve
+
+ROC curve is a visualization tool which allows to measure the performance of a **score** for a binary classification problem. Assume we want to explain a binary variable $Y$ (-1 or 1) by $p$ inputs $X_1,\dots,X_p$. A score is a function $\mathbb R^p\to\mathbb R$ such that $S(x)$ should be
+
+  * large if we think that $x$ is +1
+  * small if we think that $x$ is -1.
+  
+We can measure the performance of a score function by the 2 errors 
+$$\alpha(s)=P(g_s(X)=1|Y=-1)=P(S(X)\geq s|Y=-1)$$
+and
+$$\beta(s)=P(g_s(X)=-1|Y=1)=P(S(X)<s|Y=1).$$
+The ROC curve allows to visualize these two errors on a same graph. It is defined by
+$$\left\{
+\begin{array}{l}
+x(s)=\alpha(s)=1-sp(s)=P(S(X)>s|Y=-1) \\
+y(s)=1-\beta(s)=se(s)=P(S(X)\geq s|Y=1)
+\end{array}\right.$$
+In practice the roc curve is unknown and should be estimated from a sample $(X_1,Y_1),\dots,(X_n,Y_n)$.
+
+1. We consider two score functions $S_1$ and $S_2$. Values of these two scores functions as well as observed output are provided by the following commands:
+```{r}
+n <- 200
+set.seed(1234)
+S1 <- runif(n)
+set.seed(5678)
+S2 <- runif(n)
+Y <- rep(0,n)
+Y[S1>0.55] <- 1
+df <- data.frame(S1,S2,Y=as.factor(Y))
+```
+
+We represent value of the score according to the output with the following command
+
+```{r}
+ggplot(df)+geom_point(aes(x=S1,y=1,color=Y))
+```
+
+
+To add on the graph values of $S_2$, we can represent them on the value 2 of the $y$-axis.
+
+```{r}
+ggplot(df)+geom_point(aes(x=S1,y=1,color=Y))+geom_point(aes(x=S2,y=2,color=Y))
+```
+
+The first score seems more consistent in the sense that the observations are better separated!
+
+
+2. *geom_roc* function from the **plotROC** package allows to draw roc curves. For instance, we can represent ROC curve of $S_1$ with
+
+```{r}
+library(plotROC)
+df$Y <- as.numeric(Y)
+g <- ggplot(df)+aes(m=S1,d=Y)+geom_roc()
+g
+```
+
+To add on the graph the ROC curve on $S_2$ we can use **gather**.
+
+```{r}
+df_new <- gather(df,key="S",values=c("S1","S2"))
+#new_data <- gather(data=data,key="func",values="value",-X)
+#g+geom_roc(aes(m=S2,d=Y))
+#ggplot(new_data)+aes(x=X,y=value,colour=fonction)+geom_line()
+g <- ggplot(df_new)+aes(m=value,d=Y,color=S)+geom_roc()
+g
+```
+
+
+# Boxplots
+
+We consider the **mtcars** dataset.
+
+```{r}
+#help(mtcars)
+ggplot(diamonds2)+aes(x=cut,y=carat,fill=cut)+geom_boxplot()
+```
+
+```{r}
+#help(coord_flip)
+ggplot(diamonds2)+aes(x=cut,y=carat,fill=cut)+geom_boxplot()+coord_flip()
+```
+
+Using the **ggstance** package to add percentiles.
+
+```{r}
+library(ggstance)
+```
+
+### Adding quantiles and facets
+
+```{r}
+quantile <- diamonds %>%
+  group_by(cut) %>% 
+  summarise(Q1=quantile(carat,0.25),
+            Q2=quantile(carat,0.5),
+            Q3=quantile(carat,0.75),
+  )
+
+quantile_new <- gather(data=quantile,key="Q",values=c("Q1","Q2","Q3"))
+ggplot(diamonds)+geom_density(aes(x=carat,y=..density..))+facet_grid(cut~.)+geom_vline(data=quantile_new,aes(xintercept=value))
+```
+
+
+```{r}
+ggplot(diamonds)+geom_boxploth(aes(x=carat,y=-1,fill=cut))+facet_grid(cut~.)+geom_density(aes(x=carat,y=..density..))+geom_vline(data=quantile_new,aes(xintercept=value))+facet_grid(cut~.)
+```
+
+Or by using *geom_vline()*
+
+```{r}
+ggplot(diamonds)+geom_density(aes(x=carat,y=..density..))+geom_vline(data=quantile_new,aes(xintercept=value))+geom_boxploth(aes(x=carat,y=-1,fill=cut))+facet_grid(cut~.)
+```
+
