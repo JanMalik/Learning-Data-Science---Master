@@ -1,5 +1,7 @@
 # Learning Data Science - Master's Degree - 2017/2019
 
+*To be noted: not to take the 'Language' distribution bar seriously. Here it's majority of 'HTML', only due to the fact that my reports (made via R Notebooks, R markdowns, Jupyter Notebooks or else) are 'deployed' in a HTML format).*
+
 ## What's in here?
 
 > Scripts and Notebooks:
